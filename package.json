@@ -1,0 +1,75 @@
+{
+    "name": "@johannes.latzel/llm-chat-skill",
+    "version": "0.1.0",
+    "description": "Skill loading tools for the llm-chat ecosystem",
+    "license": "MIT",
+    "files": [
+        "dist/",
+        "README.md",
+        "LICENSE"
+    ],
+    "author": "Johannes B. Latzel",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/johanneslatzel/llm-chat-skill.git"
+    },
+    "bugs": {
+        "url": "https://github.com/johanneslatzel/llm-chat-skill/issues"
+    },
+    "homepage": "https://github.com/johanneslatzel/llm-chat-skill#readme",
+    "keywords": [
+        "llm",
+        "chat",
+        "skill",
+        "tool"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "verify": "tsc --noEmit && eslint . --max-warnings 0 && vitest run --coverage",
+        "lint": "eslint . --max-warnings 0",
+        "format": "prettier --write src",
+        "test": "vitest",
+        "test:coverage": "vitest run --coverage",
+        "docs": "docker run --rm -it -p 8000:8000 -v $PWD:/docs squidfunk/mkdocs-material",
+        "prepare": "husky"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "lint-staged": {
+        "src/**/*.ts": [
+            "prettier --write",
+            "eslint --max-warnings 0 --no-warn-ignored",
+            "vitest related --run"
+        ]
+    },
+    "dependencies": {
+        "@johannes.latzel/llm-chat": "^0.3.1"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.24.0",
+        "@types/node": "^22.14.1",
+        "@typescript-eslint/eslint-plugin": "^8.60.0",
+        "@typescript-eslint/parser": "^8.60.0",
+        "@vitest/coverage-v8": "^4.1.8",
+        "eslint": "^9.24.0",
+        "eslint-config-prettier": "^10.1.2",
+        "husky": "^9.1.7",
+        "lint-staged": "^15.5.1",
+        "prettier": "^3.5.3",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.8"
+    }
+}
