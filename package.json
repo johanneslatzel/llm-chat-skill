@@ -1,6 +1,6 @@
 {
     "name": "@johannes.latzel/llm-chat-skill",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Skill loading tools for the llm-chat ecosystem",
     "license": "MIT",
     "files": [
@@ -56,7 +56,7 @@
         ]
     },
     "dependencies": {
-        "@johannes.latzel/llm-chat": "^0.3.1"
+        "@johannes.latzel/llm-chat": "^0.4.1"
     },
     "devDependencies": {
         "@eslint/js": "^9.24.0",

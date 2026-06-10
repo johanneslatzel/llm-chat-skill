@@ -9,7 +9,7 @@
 [![CI](https://github.com/johanneslatzel/llm-chat-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/johanneslatzel/llm-chat-skill/actions/workflows/ci.yml)
 [![Socket Badge](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-skill/latest)](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-skill/latest)
 
-Skill loading tools for the [llm-chat](https://github.com/johanneslatzel/llm-chat) ecosystem.
+Skill loading tools for the [llm-chat](https://github.com/johanneslatzel/llm-chat) package.
 
 ## Prerequisites
 
