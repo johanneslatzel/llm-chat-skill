@@ -1,7 +1,7 @@
 # load_skill
 
 Loads the full instructions for a named skill, including a listing
-of its available resource files (references and assets).
+of its available resource files (references, assets, and sections).
 
 ## Parameters
 
@@ -12,9 +12,11 @@ of its available resource files (references and assets).
 ## Returns
 
 The full skill body, followed by a `--- Resources ---` section listing
-each available file (e.g. `references/guide.md`).
+each available resource (e.g. `references/guide.md`, `sections/purpose.md`).
 
-Returns an error message if the skill is not found.
+For structured skills, the body is auto-composed from all section files
+at the time the skill was last written. Returns an error message if the
+skill is not found.
 
 ## Example
 
@@ -23,5 +25,5 @@ import { LoadSkillTool } from '@johannes.latzel/llm-chat-skill';
 
 const result = await tool.execute({ name: 'my_skill' });
 // result.status === ResultStatus.Success
-// result.result === "Full instructions...\n\n--- Resources ---\n\nreferences/guide.md"
+// result.result === "Full instructions...\n\n--- Resources ---\n\nreferences/guide.md\nsections/purpose.md"
 ```

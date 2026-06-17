@@ -34,16 +34,16 @@ describe('DeleteSkillTool', () => {
         const result = await tool.execute({
             name: 'existing'
         });
-        expect(result.status).toBe(ResultStatus.Success);
-        expect(result.result).toContain('deleted');
+        expect(result[0]!.status).toBe(ResultStatus.Success);
+        expect(result[0]!.result).toContain('deleted');
         expect(registry.get('existing')).toBeUndefined();
     });
 
     it('reports error for missing name', async () => {
         const tool = new DeleteSkillTool(registry);
         const result = await tool.execute({});
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('name');
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('name');
     });
 
     it('reports error for unknown skill', async () => {
@@ -51,7 +51,7 @@ describe('DeleteSkillTool', () => {
         const result = await tool.execute({
             name: 'nonexistent'
         });
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('not found');
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('not found');
     });
 });

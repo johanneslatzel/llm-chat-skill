@@ -6,13 +6,11 @@ import {
     ToolParameters
 } from '@johannes.latzel/llm-chat';
 import { SkillRegistry } from '../lib/registry.js';
-import { Skill } from '../lib/skill.js';
-import { normaliseName } from '../lib/helper.js';
 
 /**
- * Writes a resource file into a skill's `references/` or `assets/` directory.
+ * Writes a resource into a skill.
  *
- * Returns descriptive error messages for invalid parameters or filesystem
+ * Returns descriptive error messages for invalid parameters or
  * failures.
  */
 export class SetSkillResourceTool extends Tool {
@@ -25,18 +23,21 @@ export class SetSkillResourceTool extends Tool {
     constructor(registry: SkillRegistry) {
         super(
             'set_skill_resource',
-            "Write a resource file into a skill's references/ or assets/ directory. Use this to add reference documentation, templates, or other supporting files to a skill.",
+            'Write a resource into a skill — references, assets, or sections. Use sections to manage the structured body parts of a skill.',
             new ToolParameters(
                 {
                     skill_name: new ToolParameterProperty(
                         'The name of the skill to write the resource to.'
                     ),
-                    resource_name: new ToolParameterProperty(
-                        'Resource path within the skill, e.g. "references/REFERENCE.md" or "assets/template.json". Must start with "references/" or "assets/".'
+                    resourceType: new ToolParameterProperty(
+                        'Resource type — must be references, assets, or sections.'
                     ),
-                    content: new ToolParameterProperty('File content to write.')
+                    name: new ToolParameterProperty(
+                        'Resource identifier (e.g. "guide" for references/assets). For sections, must be one of: purpose.md, inputs-outputs.md, constraints.md, workflow.md, decision-criteria.md, examples.md, anti-patterns.md.'
+                    ),
+                    content: new ToolParameterProperty('Content to write.')
                 },
-                ['skill_name', 'resource_name', 'content']
+                ['skill_name', 'resourceType', 'name', 'content']
             )
         );
         this.registry = registry;
@@ -44,7 +45,8 @@ export class SetSkillResourceTool extends Tool {
 
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const skillName = args.skill_name;
-        const resourceName = args.resource_name;
+        const resourceType = args.resourceType;
+        const name = args.name;
         const content = args.content;
 
         if (typeof skillName !== 'string' || !skillName.trim()) {
@@ -53,9 +55,15 @@ export class SetSkillResourceTool extends Tool {
                 status: ResultStatus.Error
             };
         }
-        if (typeof resourceName !== 'string' || !resourceName.trim()) {
+        if (typeof resourceType !== 'string' || !resourceType.trim()) {
             return {
-                result: "Required parameter 'resource_name' is missing or not a string",
+                result: "Required parameter 'resourceType' is missing or not a string",
+                status: ResultStatus.Error
+            };
+        }
+        if (typeof name !== 'string' || !name.trim()) {
+            return {
+                result: "Required parameter 'name' is missing or not a string",
                 status: ResultStatus.Error
             };
         }
@@ -67,23 +75,15 @@ export class SetSkillResourceTool extends Tool {
         }
 
         try {
-            const parsed = Skill.parseResourcePath(resourceName.trim());
-            if (!parsed) {
-                return {
-                    result: `Invalid resource '${resourceName}'. Resource must start with 'references/' or 'assets/'.`,
-                    status: ResultStatus.Error
-                };
-            }
-
-            const skill = this.registry.get(normaliseName(skillName.trim()));
+            const skill = this.registry.get(skillName);
             if (!skill) {
                 return { result: `Skill '${skillName}' not found.`, status: ResultStatus.Error };
             }
 
-            this.registry.validateResourceLengths(parsed.fileName, content);
-            await skill.setResource(parsed.resource, parsed.fileName, content);
+            this.registry.validateResourceLengths(name.trim(), content);
+            await skill.setResource(resourceType.trim(), name.trim(), content);
             return {
-                result: `Resource '${resourceName}' written to skill '${skillName}'.`,
+                result: `Resource '${name}' of type '${resourceType}' written to skill '${skillName}'.`,
                 status: ResultStatus.Success
             };
         } catch (e) {

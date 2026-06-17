@@ -30,6 +30,7 @@ describe('SetSkillTool', () => {
 
     afterEach(() => {
         removeTempDir(tmpDir);
+        vi.restoreAllMocks();
     });
 
     describe('create', () => {
@@ -40,8 +41,8 @@ describe('SetSkillTool', () => {
                 description: VALID_DESC,
                 body: VALID_BODY
             });
-            expect(result.status).toBe(ResultStatus.Success);
-            expect(result.result).toContain('created successfully');
+            expect(result[0]!.status).toBe(ResultStatus.Success);
+            expect(result[0]!.result).toContain('created successfully');
 
             const skill = registry.get('new_skill');
             expect(skill).toBeDefined();
@@ -49,14 +50,18 @@ describe('SetSkillTool', () => {
             expect(skill!.body).toBe(VALID_BODY);
         });
 
-        it('reports error when body is missing for new skill', async () => {
+        it('creates a structured skill when body is omitted', async () => {
             const tool = new SetSkillTool(registry);
             const result = await tool.execute({
                 name: 'new_skill',
                 description: VALID_DESC
             });
-            expect(result.status).toBe(ResultStatus.Error);
-            expect(result.result).toContain('body');
+            expect(result[0]!.status).toBe(ResultStatus.Success);
+            expect(result[0]!.result).toContain('Structured skill');
+            const skill = registry.get('new_skill');
+            expect(skill).toBeDefined();
+            expect(skill!.isStructured).toBe(true);
+            expect(skill!.body).toBe('');
         });
 
         it('reports error when description is missing for new skill', async () => {
@@ -64,8 +69,8 @@ describe('SetSkillTool', () => {
             const result = await tool.execute({
                 name: 'no_desc'
             });
-            expect(result.status).toBe(ResultStatus.Error);
-            expect(result.result).toContain('description');
+            expect(result[0]!.status).toBe(ResultStatus.Error);
+            expect(result[0]!.result).toContain('description');
         });
     });
 
@@ -76,8 +81,8 @@ describe('SetSkillTool', () => {
                 name: 'existing',
                 description: 'Updated description of the existing skill'
             });
-            expect(result.status).toBe(ResultStatus.Success);
-            expect(result.result).toContain('description');
+            expect(result[0]!.status).toBe(ResultStatus.Success);
+            expect(result[0]!.result).toContain('description');
             expect(registry.get('existing')!.description).toBe('Updated description of the existing skill');
         });
 
@@ -87,8 +92,8 @@ describe('SetSkillTool', () => {
                 name: 'existing',
                 body: VALID_BODY
             });
-            expect(result.status).toBe(ResultStatus.Success);
-            expect(result.result).toContain('body');
+            expect(result[0]!.status).toBe(ResultStatus.Success);
+            expect(result[0]!.result).toContain('body');
             expect(registry.get('existing')!.body).toBe(VALID_BODY);
         });
 
@@ -98,8 +103,8 @@ describe('SetSkillTool', () => {
                 name: 'existing',
                 new_name: 'renamed'
             });
-            expect(result.status).toBe(ResultStatus.Success);
-            expect(result.result).toContain('renamed');
+            expect(result[0]!.status).toBe(ResultStatus.Success);
+            expect(result[0]!.result).toContain('renamed');
             expect(registry.get('existing')).toBeUndefined();
             expect(registry.get('renamed')).toBeDefined();
         });
@@ -109,8 +114,8 @@ describe('SetSkillTool', () => {
             const result = await tool.execute({
                 name: 'existing'
             });
-            expect(result.status).toBe(ResultStatus.Error);
-            expect(result.result).toContain('At least one');
+            expect(result[0]!.status).toBe(ResultStatus.Error);
+            expect(result[0]!.result).toContain('At least one');
         });
 
         it('reports error for unknown skill on update', async () => {
@@ -119,16 +124,32 @@ describe('SetSkillTool', () => {
             const result = await tool.execute({
                 name: 'nonexistent'
             });
-            expect(result.status).toBe(ResultStatus.Error);
-            expect(result.result).toContain('description');
+            expect(result[0]!.status).toBe(ResultStatus.Error);
+            expect(result[0]!.result).toContain('description');
+        });
+
+        it('reports error when setting body on existing structured skill', async () => {
+            const tool = new SetSkillTool(registry);
+            // Create a structured skill first (no body)
+            await tool.execute({
+                name: 'structured_skill',
+                description: VALID_DESC
+            });
+            // Now try to update it with a body — should error
+            const result = await tool.execute({
+                name: 'structured_skill',
+                body: VALID_BODY
+            });
+            expect(result[0]!.status).toBe(ResultStatus.Error);
+            expect(result[0]!.result).toContain('Cannot directly set body');
         });
     });
 
     it('reports error for missing name parameter', async () => {
         const tool = new SetSkillTool(registry);
         const result = await tool.execute({});
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('name');
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('name');
     });
 
     it('handles unexpected error during execution', async () => {
@@ -139,7 +160,7 @@ describe('SetSkillTool', () => {
             description: 'test',
             body: VALID_BODY
         });
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('unexpected error');
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('unexpected error');
     });
 });

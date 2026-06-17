@@ -6,11 +6,9 @@ import {
     ToolParameters
 } from '@johannes.latzel/llm-chat';
 import { SkillRegistry } from '../lib/registry.js';
-import { Skill } from '../lib/skill.js';
-import { normaliseName } from '../lib/helper.js';
 
 /**
- * Reads a resource file from a skill's `references/` or `assets/` directory.
+ * Reads a resource from a skill.
  *
  * Returns descriptive error messages for unknown skills or invalid
  * resource specifications.
@@ -25,17 +23,20 @@ export class GetSkillResourceTool extends Tool {
     constructor(registry: SkillRegistry) {
         super(
             'get_skill_resource',
-            "Get additional resources provided by a skill. Use this when you need additional documentation or templates referenced by a skill. Provide the skill name and the resource type (references or assets) together with the file name, e.g. 'references/guide.md'.",
+            'Get additional resources provided by a skill — references, assets, or sections. Use this when you need documentation, templates, or structured body parts of a skill.',
             new ToolParameters(
                 {
                     skill_name: new ToolParameterProperty(
                         'The name of the skill to read from (e.g., "notebook")'
                     ),
-                    resource_name: new ToolParameterProperty(
-                        'Resource type and file name, e.g. "references/REFERENCE.md" or "assets/template.json"'
+                    resourceType: new ToolParameterProperty(
+                        'Resource type — must be references, assets, or sections.'
+                    ),
+                    name: new ToolParameterProperty(
+                        'Resource identifier, e.g. "guide" or "purpose".'
                     )
                 },
-                ['skill_name', 'resource_name']
+                ['skill_name', 'resourceType', 'name']
             )
         );
         this.registry = registry;
@@ -43,7 +44,8 @@ export class GetSkillResourceTool extends Tool {
 
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const skillName = args.skill_name;
-        const resourceName = args.resource_name;
+        const resourceType = args.resourceType;
+        const name = args.name;
 
         if (typeof skillName !== 'string' || !skillName.trim()) {
             return {
@@ -51,33 +53,30 @@ export class GetSkillResourceTool extends Tool {
                 status: ResultStatus.Error
             };
         }
-        if (typeof resourceName !== 'string' || !resourceName.trim()) {
+        if (typeof resourceType !== 'string' || !resourceType.trim()) {
             return {
-                result: "Required parameter 'resource_name' is missing or not a string",
+                result: "Required parameter 'resourceType' is missing or not a string",
+                status: ResultStatus.Error
+            };
+        }
+        if (typeof name !== 'string' || !name.trim()) {
+            return {
+                result: "Required parameter 'name' is missing or not a string",
                 status: ResultStatus.Error
             };
         }
 
-        const parsed = Skill.parseResourcePath(resourceName.trim());
-        if (!parsed) {
-            return {
-                result: "Invalid resource specification. Use 'references/<name>' or 'assets/<name>' (e.g. 'references/guide.md').",
-                status: ResultStatus.Error
-            };
-        }
-
-        const s = this.registry.get(normaliseName(skillName.trim()));
-        if (!s) {
+        const skill = this.registry.get(skillName);
+        if (!skill) {
             return { result: `Skill '${skillName}' not found.`, status: ResultStatus.Error };
         }
-
-        const content = await s.getResource(parsed.resource, parsed.fileName);
+        const content = await skill.getResource(resourceType.trim(), name.trim());
         if (content !== null) {
             return { result: content, status: ResultStatus.Success };
         }
 
         return {
-            result: `Resource '${parsed.resource}/${parsed.fileName}' not found in skill '${skillName}'.`,
+            result: `Resource '${name}' of type '${resourceType}' not found in skill '${skillName}'.`,
             status: ResultStatus.Error
         };
     }

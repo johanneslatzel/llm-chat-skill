@@ -1,6 +1,6 @@
 {
     "name": "@johannes.latzel/llm-chat-skill",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "description": "Skill loading tools for the llm-chat ecosystem",
     "license": "MIT",
     "files": [
@@ -42,6 +42,8 @@
         "format": "prettier --write src",
         "test": "vitest",
         "test:coverage": "vitest run --coverage",
+        "clean:pack": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify && npm run build && npm pack",
+        "clean:install": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify",
         "docs": "docker run --rm -it -p 8000:8000 -v $PWD:/docs squidfunk/mkdocs-material",
         "prepare": "husky"
     },
@@ -56,10 +58,12 @@
         ]
     },
     "dependencies": {
-        "@johannes.latzel/llm-chat": "^0.4.1"
+        "@johannes.latzel/llm-chat": "^0.5.0",
+        "js-yaml": "^4.2.0"
     },
     "devDependencies": {
         "@eslint/js": "^9.24.0",
+        "@types/js-yaml": "^4.0.9",
         "@types/node": "^22.14.1",
         "@typescript-eslint/eslint-plugin": "^8.60.0",
         "@typescript-eslint/parser": "^8.60.0",

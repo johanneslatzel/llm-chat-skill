@@ -1,35 +1,102 @@
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
+import * as yaml from 'js-yaml';
 import { normaliseName } from './helper.js';
 
 /**
- * The two resource directories allowed inside a skill's subdirectory.
+ * The resource directories allowed inside a skill's subdirectory.
  * `References` holds supporting documentation; `Assets` holds templates,
- * images, or other binary/text files.
+ * images, or other binary/text files; `Sections` holds the structured
+ * body files for skills with `body-format: structured`.
  */
 export enum SkillResource {
     Assets = 'assets',
-    References = 'references'
+    References = 'references',
+    Sections = 'sections'
+}
+
+export enum BodyFormat {
+    Plain = 'plain',
+    Structured = 'structured'
 }
 
 /**
- * Resolves a resource file path against `skillDir` and guards against path
- * traversal. The file must be inside `skillDir/{resource}/` after resolution.
+ * The ordered list of section files composing a structured skill's body.
+ * Each entry maps a file name (under `sections/`) to its `##` heading.
+ */
+const SECTION_NAMES: { fileName: string; heading: string }[] = [
+    { fileName: 'purpose.md', heading: 'Purpose' },
+    { fileName: 'inputs-outputs.md', heading: 'Inputs / Outputs' },
+    { fileName: 'constraints.md', heading: 'Constraints' },
+    { fileName: 'workflow.md', heading: 'Workflow' },
+    { fileName: 'decision-criteria.md', heading: 'Decision Criteria' },
+    { fileName: 'examples.md', heading: 'Examples' },
+    { fileName: 'anti-patterns.md', heading: 'Anti-Patterns' }
+];
+
+const VALID_SECTION_NAMES: ReadonlySet<string> = new Set(SECTION_NAMES.map((s) => s.fileName));
+
+/**
+ * Demotes all ATX headings in markdown by the given number of levels.
+ * `######` headings are kept as-is since no deeper level is valid
+ * markdown. Headings inside fenced code blocks are skipped.
  *
- * Returns the absolute path, or `null` if the resolved path escapes the
- * resource subdirectory.
+ * @param levels - Number of heading levels to add (default `1`).
+ */
+export function demoteHeadings(markdown: string, levels: number = 1): string {
+    const lines = markdown.split('\n');
+    const result: string[] = [];
+    let inCodeBlock = false;
+
+    for (const line of lines) {
+        if (/^```/.test(line.trim())) {
+            inCodeBlock = !inCodeBlock;
+            result.push(line);
+            continue;
+        }
+
+        if (!inCodeBlock) {
+            const match = line.match(/^(#{1,6})\s/);
+            if (match) {
+                const hashes = match[1]!;
+                const newLevel = Math.min(hashes.length + levels, 6);
+                const demoted = '#'.repeat(newLevel);
+                result.push(demoted + line.slice(hashes.length));
+                continue;
+            }
+        }
+
+        result.push(line);
+    }
+
+    return result.join('\n');
+}
+
+/**
+ * Resolves a resource type and name against `skillDir`, validates the
+ * resource type, and guards against path traversal.
+ *
+ * Returns `null` when the type is not valid, the name is empty, or the
+ * resolved path escapes the resource subdirectory.
  */
 function resolveResourcePath(
     skillDir: string,
-    resource: SkillResource,
-    filePath: string
-): string | null {
-    const normalized = filePath.replace(/\\/g, '/');
-    const resolved = path.resolve(skillDir, resource, normalized);
+    resourceType: string,
+    name: string
+): { resource: SkillResource; fileName: string; resolved: string } | null {
+    if (!name) return null;
+
+    let resource: SkillResource;
+    if (resourceType === 'references') resource = SkillResource.References;
+    else if (resourceType === 'assets') resource = SkillResource.Assets;
+    else if (resourceType === 'sections') resource = SkillResource.Sections;
+    else return null;
+
+    const resolved = path.resolve(skillDir, resource, name);
     const resourcePrefix = path.join(skillDir, resource) + path.sep;
     if (!resolved.startsWith(resourcePrefix)) return null;
-    return resolved;
+    return { resource, fileName: name, resolved };
 }
 
 /**
@@ -37,8 +104,8 @@ function resolveResourcePath(
  *
  * Each skill lives in a subdirectory of the configured skill directory,
  * named after the skill (sanitized). The subdirectory contains `SKILL.md`
- * (YAML frontmatter + markdown body), plus optional `references/` and
- * `assets/` directories.
+ * (YAML frontmatter + markdown body), plus optional `references/`,
+ * `assets/`, and `sections/` directories.
  */
 export class Skill {
     /** Unique name used to identify the skill (e.g., `"my_skill"`). */
@@ -49,12 +116,21 @@ export class Skill {
     body: string;
     /** Absolute path to the general skill directory containing skill subdirectories. */
     rootDir: string;
+    /** Tags for categorisation (stored in `metadata.tags`). */
+    tags: string[] = [];
+    /** Whether this skill uses the structured sections/ format. */
+    metadataBodyFormat: BodyFormat = BodyFormat.Plain;
 
     constructor(name: string, description: string, body: string, rootDir: string) {
         this.name = name;
         this.description = description;
         this.body = body;
         this.rootDir = rootDir;
+    }
+
+    /** True when the skill uses structured `sections/` files. */
+    get isStructured(): boolean {
+        return this.metadataBodyFormat === BodyFormat.Structured;
     }
 
     /** Sanitized directory name derived from the skill name. */
@@ -72,33 +148,29 @@ export class Skill {
         return normaliseName(name);
     }
 
-    /**
-     * Parses a user-supplied path string like `"references/doc.md"` into
-     * a {@link SkillResource} and a file name.
-     *
-     * Returns `null` when the prefix is neither `references` nor `assets`,
-     * or when no file name follows the prefix.
-     */
-    static parseResourcePath(path: string): { resource: SkillResource; fileName: string } | null {
-        const normalized = path.replace(/\\/g, '/');
-        const slashIdx = normalized.indexOf('/');
-        if (slashIdx === -1) return null;
-        const prefix = normalized.slice(0, slashIdx);
-        const fileName = normalized.slice(slashIdx + 1);
-        if (!fileName) return null;
-        const resource =
-            prefix === 'references'
-                ? SkillResource.References
-                : prefix === 'assets'
-                  ? SkillResource.Assets
-                  : null;
-        if (!resource) return null;
-        return { resource, fileName };
-    }
-
     /** Serializes the skill to SKILL.md format (YAML frontmatter + body). */
     serialize(): string {
-        let result = `---\nname: ${this.name}\ndescription: ${this.description}\n---`;
+        const frontmatter: Record<string, unknown> = {
+            name: this.name,
+            description: this.description
+        };
+
+        const metadata: Record<string, unknown> = {};
+        if (this.tags.length > 0) {
+            metadata.tags = this.tags;
+        }
+        if (this.metadataBodyFormat === BodyFormat.Structured) {
+            metadata['body-format'] = 'structured';
+        }
+        if (Object.keys(metadata).length > 0) {
+            frontmatter.metadata = metadata;
+        }
+
+        const cleanYaml = yaml
+            .dump(frontmatter, { lineWidth: -1, noCompatMode: true })
+            .replace(/\n$/, '');
+
+        let result = `---\n${cleanYaml}\n---`;
         if (this.body) {
             result += `\n\n${this.body}\n`;
         } else {
@@ -143,6 +215,34 @@ export class Skill {
     }
 
     /**
+     * Reads all section files in order, demotes their headings,
+     * assembles them under `##` wrappers, and writes the result
+     * into `this.body` and SKILL.md on disk.
+     *
+     * Also sets `metadataBodyFormat` to `'structured'`.
+     */
+    async recomposeBody(): Promise<void> {
+        const parts: string[] = [];
+
+        for (const { fileName, heading } of SECTION_NAMES) {
+            const filePath = path.join(this.skillDir, 'sections', fileName);
+            try {
+                const content = await fsp.readFile(filePath, 'utf-8');
+                const trimmed = content.trim();
+                if (!trimmed) continue;
+                const demoted = demoteHeadings(trimmed);
+                parts.push(`# ${heading}\n${demoted}`);
+            } catch {
+                // section file does not exist — skip
+            }
+        }
+
+        this.body = parts.join('\n\n');
+        this.metadataBodyFormat = BodyFormat.Structured;
+        await this.save();
+    }
+
+    /**
      * Updates `description` and/or `body` in memory and writes the
      * changes to SKILL.md on disk.
      */
@@ -153,63 +253,104 @@ export class Skill {
     }
 
     /**
-     * Returns the contents of a resource file, or `null` if it does not
-     * exist or the path is invalid.
+     * Returns the contents of a resource, or `null` if it does not
+     * exist or the type/name is invalid.
      *
      * Path traversal outside the resource subdirectory is blocked.
      */
-    async getResource(resource: SkillResource, name: string): Promise<string | null> {
-        const resolved = resolveResourcePath(this.skillDir, resource, name);
-        if (!resolved) return null;
+    async getResource(resourceType: string, name: string): Promise<string | null> {
+        const parsed = resolveResourcePath(this.skillDir, resourceType, name);
+        if (!parsed) return null;
         try {
-            return await fsp.readFile(resolved, 'utf-8');
+            return await fsp.readFile(parsed.resolved, 'utf-8');
         } catch {
             return null;
         }
     }
 
     /**
-     * Writes content to a resource file, creating intermediate directories
-     * as needed.
+     * Writes content to a resource. When writing to sections, the
+     * SKILL.md body is recomposed from all section resources.
      *
-     * Path traversal outside the resource subdirectory is blocked.
+     * Throws when the type is invalid, traversal is detected, or when
+     * writing sections to a non-structured skill.
      */
-    async setResource(resource: SkillResource, name: string, content: string): Promise<void> {
-        const resolved = resolveResourcePath(this.skillDir, resource, name);
-        if (!resolved) {
+    async setResource(resourceType: string, name: string, content: string): Promise<void> {
+        const parsed = resolveResourcePath(this.skillDir, resourceType, name);
+        if (!parsed) {
             throw new Error(
-                `Only files in references/ and assets/ directories can be written, and path traversal is not allowed.`
+                `Only resources of type references, assets, or sections can be written, and traversal outside the skill is not allowed.`
             );
         }
-        mkdirSync(path.dirname(resolved), { recursive: true });
-        await fsp.writeFile(resolved, content, 'utf-8');
+        if (parsed.resource === SkillResource.Sections) {
+            if (!VALID_SECTION_NAMES.has(name)) {
+                throw new Error(
+                    `Invalid section name '${name}'. Allowed section names: ${SECTION_NAMES.map((s) => `"${s.fileName}"`).join(', ')}.`
+                );
+            }
+            if (!this.isStructured) {
+                throw new Error(
+                    `Skill '${this.name}' is not a structured skill and does not have sections. Create a structured skill first (set_skill without body) or use references or assets resources.`
+                );
+            }
+        }
+        mkdirSync(path.dirname(parsed.resolved), { recursive: true });
+        await fsp.writeFile(parsed.resolved, content, 'utf-8');
+
+        if (parsed.resource === SkillResource.Sections) {
+            await this.recomposeBody();
+        }
     }
 
     /**
-     * Deletes a resource file. Does not error if the file does not exist.
+     * Deletes a resource. Does not error if the resource does not exist.
+     * When deleting from sections, the SKILL.md body is recomposed
+     * from the remaining section resources.
      *
-     * Path traversal outside the resource subdirectory is blocked.
+     * Throws when the type is invalid, traversal is detected, or when
+     * deleting sections from a non-structured skill.
      */
-    async deleteResource(resource: SkillResource, name: string): Promise<void> {
-        const resolved = resolveResourcePath(this.skillDir, resource, name);
-        if (!resolved) {
+    async deleteResource(resourceType: string, name: string): Promise<void> {
+        const parsed = resolveResourcePath(this.skillDir, resourceType, name);
+        if (!parsed) {
             throw new Error(
-                `Only files in references/ and assets/ directories can be deleted, and path traversal is not allowed.`
+                `Only resources of type references, assets, or sections can be deleted, and traversal outside the skill is not allowed.`
             );
         }
-        await fsp.rm(resolved, { force: true });
+        if (parsed.resource === SkillResource.Sections) {
+            if (!VALID_SECTION_NAMES.has(name)) {
+                throw new Error(
+                    `Invalid section name '${name}'. Allowed section names: ${SECTION_NAMES.map((s) => `"${s.fileName}"`).join(', ')}.`
+                );
+            }
+            if (!this.isStructured) {
+                throw new Error(
+                    `Skill '${this.name}' is not a structured skill and does not have sections.`
+                );
+            }
+        }
+        await fsp.rm(parsed.resolved, { force: true });
+
+        if (parsed.resource === SkillResource.Sections) {
+            await this.recomposeBody();
+        }
     }
 
     /**
-     * Returns all resource files in this skill's `references/` and `assets/`
-     * directories. Non-recursive — only returns top-level entries.
+     * Returns all resource files in this skill's `references/`, `assets/`,
+     * and `sections/` directories. Non-recursive — only returns top-level
+     * entries.
      *
      * Missing or empty resource directories are handled gracefully.
      */
     async listResources(): Promise<{ resource: SkillResource; fileName: string }[]> {
         const results: { resource: SkillResource; fileName: string }[] = [];
 
-        for (const res of [SkillResource.References, SkillResource.Assets]) {
+        for (const res of [
+            SkillResource.References,
+            SkillResource.Assets,
+            SkillResource.Sections
+        ]) {
             const dir = path.join(this.skillDir, res);
             try {
                 const entries = await fsp.readdir(dir, { withFileTypes: true });
@@ -237,6 +378,8 @@ export class Skill {
      * Parses a `SKILL.md` string and returns a new `Skill` instance.
      *
      * The YAML frontmatter must contain `name` and `description` fields.
+     * When `metadata.body-format` is `"structured"` the sections are read
+     * from the `sections/` directory (not from the body) on load.
      * `rootDir` is the general skill directory (parent), not the skill's
      * own subdirectory — the subdirectory is derived from the name.
      *
@@ -245,18 +388,34 @@ export class Skill {
     static parse(content: string, rootDir: string): Skill | null {
         const match = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
         if (!match) return null;
-        const frontmatter: Record<string, string> = {};
-        for (const line of match[1]!.split('\n')) {
-            const colonIdx = line.indexOf(':');
-            if (colonIdx === -1) continue;
-            const key = line.slice(0, colonIdx).trim();
-            const value = line.slice(colonIdx + 1).trim();
-            if (key && value) frontmatter[key] = value;
+
+        let parsed: Record<string, unknown>;
+        try {
+            parsed = yaml.load(match[1]!) as Record<string, unknown>;
+        } catch {
+            return null;
         }
-        const name = frontmatter.name;
-        const description = frontmatter.description;
+
+        if (!parsed || typeof parsed !== 'object') return null;
+
+        const name = parsed.name;
+        const description = parsed.description;
+        if (typeof name !== 'string' || !name || typeof description !== 'string' || !description) {
+            return null;
+        }
+
         const body = match[2]!.trim();
-        if (!name || !description) return null;
-        return new Skill(name, description, body, rootDir);
+        const skill = new Skill(name, description, body, rootDir);
+
+        const metadata = parsed.metadata as Record<string, unknown> | undefined;
+        if (metadata && typeof metadata === 'object') {
+            if (Array.isArray(metadata.tags)) {
+                skill.tags = metadata.tags.filter((t): t is string => typeof t === 'string');
+            }
+            skill.metadataBodyFormat =
+                metadata['body-format'] === 'structured' ? BodyFormat.Structured : BodyFormat.Plain;
+        }
+
+        return skill;
     }
 }

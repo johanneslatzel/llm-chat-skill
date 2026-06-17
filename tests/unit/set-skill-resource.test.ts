@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SkillRegistry, SkillRegistryConfiguration, SkillResource, Skill, SetSkillResourceTool } from '../../src/index.js';
+import { SkillRegistry, SkillRegistryConfiguration, Skill, SetSkillResourceTool, SetSkillTool } from '../../src/index.js';
 import { ResultStatus } from '@johannes.latzel/llm-chat';
 import { createTempDir, removeTempDir, createTempDirStructure } from '../index.js';
 
@@ -27,20 +27,22 @@ describe('SetSkillResourceTool', () => {
 
     afterEach(() => {
         removeTempDir(tmpDir);
+        vi.restoreAllMocks();
     });
 
     it('writes a reference file', async () => {
         const tool = new SetSkillResourceTool(registry);
         const result = await tool.execute({
             skill_name: 'my_skill',
-            resource_name: 'references/guide.md',
+            resourceType: 'references',
+            name: 'guide.md',
             content: 'Guide content'
         });
-        expect(result.status).toBe(ResultStatus.Success);
-        expect(result.result).toContain('written');
+        expect(result[0]!.status).toBe(ResultStatus.Success);
+        expect(result[0]!.result).toContain('written');
 
         const skill = registry.get('my_skill')!;
-        const content = await skill.getResource(SkillResource.References, 'guide.md');
+        const content = await skill.getResource('references', 'guide.md');
         expect(content).toBe('Guide content');
     });
 
@@ -48,62 +50,79 @@ describe('SetSkillResourceTool', () => {
         const tool = new SetSkillResourceTool(registry);
         const result = await tool.execute({
             skill_name: 'my_skill',
-            resource_name: 'assets/template.json',
+            resourceType: 'assets',
+            name: 'template.json',
             content: '{"key": "value"}'
         });
-        expect(result.status).toBe(ResultStatus.Success);
+        expect(result[0]!.status).toBe(ResultStatus.Success);
     });
 
     it('reports error when content is missing', async () => {
         const tool = new SetSkillResourceTool(registry);
         const result = await tool.execute({
             skill_name: 'my_skill',
-            resource_name: 'references/guide.md'
+            resourceType: 'references',
+            name: 'guide.md'
         });
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('content');
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('content');
     });
 
     it('reports error for missing skill_name', async () => {
         const tool = new SetSkillResourceTool(registry);
         const result = await tool.execute({
-            resource_name: 'references/guide.md',
+            resourceType: 'references',
+            name: 'guide.md',
             content: 'test'
         });
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('skill_name');
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('skill_name');
     });
 
-    it('reports error for missing resource_name', async () => {
+    it('reports error for missing resourceType', async () => {
         const tool = new SetSkillResourceTool(registry);
         const result = await tool.execute({
             skill_name: 'my_skill',
+            name: 'guide.md',
             content: 'test'
         });
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('resource_name');
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('resourceType');
+    });
+
+    it('reports error for missing name', async () => {
+        const tool = new SetSkillResourceTool(registry);
+        const result = await tool.execute({
+            skill_name: 'my_skill',
+            resourceType: 'references',
+            content: 'test'
+        });
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('name');
     });
 
     it('reports error for unknown skill', async () => {
         const tool = new SetSkillResourceTool(registry);
         const result = await tool.execute({
             skill_name: 'nonexistent',
-            resource_name: 'references/guide.md',
+            resourceType: 'references',
+            name: 'guide.md',
             content: 'test'
         });
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('not found');
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('not found');
     });
 
-    it('reports error for path outside references or assets', async () => {
+    it('reports error for invalid resource type', async () => {
         const tool = new SetSkillResourceTool(registry);
         const result = await tool.execute({
             skill_name: 'my_skill',
-            resource_name: 'other/secret.txt',
+            resourceType: 'other',
+            name: 'secret.txt',
             content: 'test'
         });
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('must start with');
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('Only resources of type references, assets, or sections can be written');
     });
 
     it('handles filesystem error during write', async () => {
@@ -111,10 +130,52 @@ describe('SetSkillResourceTool', () => {
         vi.spyOn(Skill.prototype, 'setResource').mockRejectedValue(new Error('disk full'));
         const result = await tool.execute({
             skill_name: 'my_skill',
-            resource_name: 'references/guide.md',
+            resourceType: 'references',
+            name: 'guide.md',
             content: 'test'
         });
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('disk full');
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('disk full');
+    });
+
+    it('writes a section file to a structured skill', async () => {
+        // Create a structured skill via SetSkillTool (normal user path)
+        const setTool = new SetSkillTool(registry);
+        const createResult = await setTool.execute({
+            name: 'struct_skill',
+            description: 'A sufficiently long description for testing'
+        });
+        expect(createResult[0]!.status).toBe(ResultStatus.Success);
+        expect(createResult[0]!.result).toContain('Structured skill');
+
+        const skill = registry.get('struct_skill')!;
+        expect(skill.isStructured).toBe(true);
+
+        const tool = new SetSkillResourceTool(registry);
+        const result = await tool.execute({
+            skill_name: 'struct_skill',
+            resourceType: 'sections',
+            name: 'purpose.md',
+            content: '# Purpose\n\nThis is the purpose.'
+        });
+        expect(result[0]!.status).toBe(ResultStatus.Success);
+        expect(result[0]!.result).toContain('written');
+
+        const content = await skill.getResource('sections', 'purpose.md');
+        expect(content).toBe('# Purpose\n\nThis is the purpose.');
+        // Body should be recomposed
+        expect(skill.body).toContain('Purpose');
+    });
+
+    it('reports error when writing sections to a plain skill', async () => {
+        const tool = new SetSkillResourceTool(registry);
+        const result = await tool.execute({
+            skill_name: 'my_skill',
+            resourceType: 'sections',
+            name: 'purpose.md',
+            content: '# Purpose'
+        });
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('not a structured skill');
     });
 });

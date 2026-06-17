@@ -6,13 +6,11 @@ import {
     ToolParameters
 } from '@johannes.latzel/llm-chat';
 import { SkillRegistry } from '../lib/registry.js';
-import { Skill } from '../lib/skill.js';
-import { normaliseName } from '../lib/helper.js';
 
 /**
- * Deletes a resource file from a skill's `references/` or `assets/` directory.
+ * Deletes a resource from a skill.
  *
- * Returns descriptive error messages for invalid parameters or filesystem
+ * Returns descriptive error messages for invalid parameters or
  * failures.
  */
 export class DeleteSkillResourceTool extends Tool {
@@ -25,15 +23,20 @@ export class DeleteSkillResourceTool extends Tool {
     constructor(registry: SkillRegistry) {
         super(
             'delete_skill_resource',
-            'Delete a resource from a skill. Use this to remove files that are no longer needed. Load a skill to get its resources.',
+            'Delete a resource from a skill — references, assets, or sections. Use this to remove resources that are no longer needed.',
             new ToolParameters(
                 {
                     skill_name: new ToolParameterProperty(
                         'The name of the skill to delete the resource from.'
                     ),
-                    resource_name: new ToolParameterProperty('The name of the resource to delete.')
+                    resourceType: new ToolParameterProperty(
+                        'Resource type — must be references, assets, or sections.'
+                    ),
+                    name: new ToolParameterProperty(
+                        'Resource identifier (e.g. "guide" for references/assets). For sections, must be one of: purpose.md, inputs-outputs.md, constraints.md, workflow.md, decision-criteria.md, examples.md, anti-patterns.md.'
+                    )
                 },
-                ['skill_name', 'resource_name']
+                ['skill_name', 'resourceType', 'name']
             )
         );
         this.registry = registry;
@@ -41,7 +44,8 @@ export class DeleteSkillResourceTool extends Tool {
 
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const skillName = args.skill_name;
-        const resourceName = args.resource_name;
+        const resourceType = args.resourceType;
+        const name = args.name;
 
         if (typeof skillName !== 'string' || !skillName.trim()) {
             return {
@@ -49,30 +53,28 @@ export class DeleteSkillResourceTool extends Tool {
                 status: ResultStatus.Error
             };
         }
-        if (typeof resourceName !== 'string' || !resourceName.trim()) {
+        if (typeof resourceType !== 'string' || !resourceType.trim()) {
             return {
-                result: "Required parameter 'resource_name' is missing or not a string",
+                result: "Required parameter 'resourceType' is missing or not a string",
+                status: ResultStatus.Error
+            };
+        }
+        if (typeof name !== 'string' || !name.trim()) {
+            return {
+                result: "Required parameter 'name' is missing or not a string",
                 status: ResultStatus.Error
             };
         }
 
         try {
-            const parsed = Skill.parseResourcePath(resourceName.trim());
-            if (!parsed) {
-                return {
-                    result: `Invalid resource '${resourceName}'. Resource must start with 'references/' or 'assets/'.`,
-                    status: ResultStatus.Error
-                };
-            }
-
-            const skill = this.registry.get(normaliseName(skillName.trim()));
+            const skill = this.registry.get(skillName);
             if (!skill) {
                 return { result: `Skill '${skillName}' not found.`, status: ResultStatus.Error };
             }
 
-            await skill.deleteResource(parsed.resource, parsed.fileName);
+            await skill.deleteResource(resourceType.trim(), name.trim());
             return {
-                result: `Resource '${resourceName}' deleted from skill '${skillName}'.`,
+                result: `Resource '${name}' of type '${resourceType}' deleted from skill '${skillName}'.`,
                 status: ResultStatus.Success
             };
         } catch (e) {

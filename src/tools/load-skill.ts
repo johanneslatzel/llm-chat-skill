@@ -6,11 +6,10 @@ import {
     ToolParameters
 } from '@johannes.latzel/llm-chat';
 import { SkillRegistry } from '../lib/registry.js';
-import { normaliseName } from '../lib/helper.js';
 
 /**
  * Loads the full instructions for a named skill, including a listing of
- * its available resource files (references and assets).
+ * its available resources (references, assets, and sections).
  *
  * Returns an error message when the skill is not found.
  */
@@ -45,10 +44,10 @@ export class LoadSkillTool extends Tool {
                 status: ResultStatus.Error
             };
         }
-        const skill = this.registry.get(normaliseName(name));
+        const skill = this.registry.get(name);
         if (!skill) {
             return {
-                result: `Skill '${name}' not found.\n\n${this.registry.listing()}`,
+                result: `Skill '${name}' not found.\n\n${await this.registry.listing()}`,
                 status: ResultStatus.Error
             };
         }

@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { chmodSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
-import { SkillRegistry, SkillRegistryConfiguration, SkillResource, Skill } from '../../src/index.js';
+import { PromptContainer } from '@johannes.latzel/llm-chat';
+import type { ChatService } from '@johannes.latzel/llm-chat';
+import { BodyFormat, SkillRegistry, SkillRegistryConfiguration, SkillResource, Skill } from '../../src/index.js';
+import { demoteHeadings } from '../../src/lib/skill.js';
 import { createTempDir, removeTempDir, createTempDirStructure } from '../index.js';
 
 const VALID_DESC = 'A sufficiently long description for testing';
@@ -25,6 +28,7 @@ describe('SkillRegistry', () => {
 
     afterEach(() => {
         removeTempDir(tmpDir);
+        vi.restoreAllMocks();
     });
 
     it('loads a skill from a subdirectory', async () => {
@@ -93,17 +97,50 @@ describe('SkillRegistry', () => {
         const registry = new SkillRegistry(config);
         await registry.initialize();
 
-        const listing = registry.listing();
-        expect(listing).toContain('alpha');
+        const listing = await registry.listing();
+        expect(listing).toContain('alpha:');
         expect(listing).toContain('Alpha skill');
-        expect(listing).toContain('beta');
+        expect(listing).toContain('beta:');
         expect(listing).toContain('Beta skill');
+        expect(listing).toContain('body-format: plain');
+        expect(listing).toContain('assets: 0');
+        expect(listing).toContain('references: 0');
+        expect(listing).not.toContain('tags:');
     });
 
-    it('listing returns empty string when no skills', async () => {
-        const registry = new SkillRegistry(new SkillRegistryConfiguration(tmpDir));
+    it('listing includes tags when a skill has them', async () => {
+        createTempDirStructure(tmpDir, {
+            'tagged/SKILL.md': makeSkillFile('tagged', 'A tagged skill', 'body'),
+        });
+
+        const config = new SkillRegistryConfiguration(tmpDir);
+        const registry = new SkillRegistry(config);
         await registry.initialize();
-        expect(registry.listing()).toBe('');
+
+        const skill = registry.get('tagged')!;
+        skill.tags = ['deploy', 'ops', 'demo'];
+
+        const listing = await registry.listing();
+        expect(listing).toContain('tags: deploy, ops, demo');
+    });
+
+    it('listing counts assets and references per skill', async () => {
+        createTempDirStructure(tmpDir, {
+            'resourced/SKILL.md': makeSkillFile('resourced', 'A skill with resources', 'body'),
+            'resourced/references/guide.md': 'guide',
+            'resourced/references/notes.md': 'notes',
+            'resourced/assets/config.json': '{}',
+        });
+
+        const config = new SkillRegistryConfiguration(tmpDir);
+        const registry = new SkillRegistry(config);
+        await registry.initialize();
+
+        const listing = await registry.listing();
+        expect(listing).toContain('resourced:');
+        expect(listing).toContain('- description: A skill with resources');
+        expect(listing).toContain('assets: 1');
+        expect(listing).toContain('references: 2');
     });
 
     it('skips skill files with invalid frontmatter', async () => {
@@ -142,16 +179,6 @@ describe('SkillRegistry', () => {
         expect(registry.list()).toHaveLength(0);
     });
 
-    it('parseResourcePath returns null for path without a slash', async () => {
-        const result = Skill.parseResourcePath('references');
-        expect(result).toBeNull();
-    });
-
-    it('parseResourcePath returns null for path with trailing slash', async () => {
-        const result = Skill.parseResourcePath('references/');
-        expect(result).toBeNull();
-    });
-
     it('getResource reads files from references directory', async () => {
         createTempDirStructure(tmpDir, {
             'deep/SKILL.md': makeSkillFile('deep', 'deep skill', 'body'),
@@ -163,7 +190,7 @@ describe('SkillRegistry', () => {
         await registry.initialize();
 
         const skill = registry.get('deep')!;
-        const result = await skill.getResource(SkillResource.References, 'doc.md');
+        const result = await skill.getResource('references', 'doc.md');
         expect(result).toBe('Reference content');
     });
 
@@ -178,7 +205,7 @@ describe('SkillRegistry', () => {
         await registry.initialize();
 
         const skill = registry.get('deep')!;
-        const result = await skill.getResource(SkillResource.References, '../secret.txt');
+        const result = await skill.getResource('references', '../secret.txt');
         expect(result).toBeNull();
     });
 
@@ -192,7 +219,7 @@ describe('SkillRegistry', () => {
         await registry.initialize();
 
         const skill = registry.get('deep')!;
-        const result = await skill.getResource(SkillResource.References, '../../etc/passwd');
+        const result = await skill.getResource('references', '../../etc/passwd');
         expect(result).toBeNull();
     });
 
@@ -660,8 +687,8 @@ describe('SkillRegistry', () => {
         await registry.initialize();
 
         const skill = registry.get('myskill')!;
-        await skill.setResource(SkillResource.References, 'guide.md', 'Guide content');
-        const result = await skill.getResource(SkillResource.References, 'guide.md');
+        await skill.setResource('references', 'guide.md', 'Guide content');
+        const result = await skill.getResource('references', 'guide.md');
         expect(result).toBe('Guide content');
     });
 
@@ -675,8 +702,8 @@ describe('SkillRegistry', () => {
         await registry.initialize();
 
         const skill = registry.get('myskill')!;
-        await skill.setResource(SkillResource.Assets, 'template.json', '{"key": "value"}');
-        const result = await skill.getResource(SkillResource.Assets, 'template.json');
+        await skill.setResource('assets', 'template.json', '{"key": "value"}');
+        const result = await skill.getResource('assets', 'template.json');
         expect(result).toBe('{"key": "value"}');
     });
 
@@ -690,8 +717,8 @@ describe('SkillRegistry', () => {
         await registry.initialize();
 
         const skill = registry.get('myskill')!;
-        await skill.setResource(SkillResource.References, 'sub/deep/file.md', 'Deep content');
-        const result = await skill.getResource(SkillResource.References, 'sub/deep/file.md');
+        await skill.setResource('references', 'sub/deep/file.md', 'Deep content');
+        const result = await skill.getResource('references', 'sub/deep/file.md');
         expect(result).toBe('Deep content');
     });
 
@@ -706,8 +733,8 @@ describe('SkillRegistry', () => {
         await registry.initialize();
 
         const skill = registry.get('myskill')!;
-        await skill.setResource(SkillResource.References, 'guide.md', 'New content');
-        const result = await skill.getResource(SkillResource.References, 'guide.md');
+        await skill.setResource('references', 'guide.md', 'New content');
+        const result = await skill.getResource('references', 'guide.md');
         expect(result).toBe('New content');
     });
 
@@ -722,8 +749,8 @@ describe('SkillRegistry', () => {
 
         const skill = registry.get('myskill')!;
         await expect(
-            skill.setResource(SkillResource.References, '../outside.txt', 'content')
-        ).rejects.toThrow('path traversal');
+            skill.setResource('references', '../outside.txt', 'content')
+        ).rejects.toThrow('traversal outside the skill');
     });
 
     it('setResource prevents path traversal outside rootDir', async () => {
@@ -737,8 +764,8 @@ describe('SkillRegistry', () => {
 
         const skill = registry.get('myskill')!;
         await expect(
-            skill.setResource(SkillResource.References, '../../outside.txt', 'content')
-        ).rejects.toThrow('path traversal');
+            skill.setResource('references', '../../outside.txt', 'content')
+        ).rejects.toThrow('traversal outside the skill');
     });
 
     // ── deleteResource tests ───────────────────────────────────
@@ -754,8 +781,8 @@ describe('SkillRegistry', () => {
         await registry.initialize();
 
         const skill = registry.get('myskill')!;
-        await skill.deleteResource(SkillResource.References, 'guide.md');
-        const result = await skill.getResource(SkillResource.References, 'guide.md');
+        await skill.deleteResource('references', 'guide.md');
+        const result = await skill.getResource('references', 'guide.md');
         expect(result).toBeNull();
     });
 
@@ -770,7 +797,7 @@ describe('SkillRegistry', () => {
 
         const skill = registry.get('myskill')!;
         await expect(
-            skill.deleteResource(SkillResource.References, 'missing.md')
+            skill.deleteResource('references', 'missing.md')
         ).resolves.toBeUndefined();
     });
 
@@ -785,8 +812,8 @@ describe('SkillRegistry', () => {
 
         const skill = registry.get('myskill')!;
         await expect(
-            skill.deleteResource(SkillResource.References, '../outside.txt')
-        ).rejects.toThrow('path traversal');
+            skill.deleteResource('references', '../outside.txt')
+        ).rejects.toThrow('traversal outside the skill');
     });
 
     it('deleteResource prevents path traversal outside rootDir', async () => {
@@ -800,8 +827,8 @@ describe('SkillRegistry', () => {
 
         const skill = registry.get('myskill')!;
         await expect(
-            skill.deleteResource(SkillResource.References, '../../outside.txt')
-        ).rejects.toThrow('path traversal');
+            skill.deleteResource('references', '../../outside.txt')
+        ).rejects.toThrow('traversal outside the skill');
     });
 
     // ── listResources tests ────────────────────────────────────
@@ -853,4 +880,500 @@ describe('SkillRegistry', () => {
         const output = skill.serialize();
         expect(output).toBe('---\nname: test\ndescription: A sufficiently long description for testing\n---\n');
     });
+
+    it('serialize includes metadata tags', () => {
+        const skill = new Skill('test', 'A sufficiently long description for testing', 'body', '/tmp');
+        skill.tags = ['deploy', 'ops'];
+        const output = skill.serialize();
+        expect(output).toContain('metadata:');
+        expect(output).toContain('tags:');
+        expect(output).toContain('deploy');
+        expect(output).toContain('ops');
+    });
+
+    it('serialize includes body-format for structured skills', () => {
+        const skill = new Skill('test', 'A sufficiently long description for testing', '', '/tmp');
+        skill.metadataBodyFormat = BodyFormat.Structured;
+        const output = skill.serialize();
+        expect(output).toContain('metadata:');
+        expect(output).toContain('body-format: structured');
+    });
+
+    // ── Structured skill: updateSkill guardrail ───────────────────
+
+    it('updateSkill rejects body on structured skill', async () => {
+        createTempDirStructure(tmpDir, {
+            'plain/SKILL.md': makeSkillFile('plain', 'A sufficiently long description for testing', VALID_BODY)
+        });
+
+        const config = new SkillRegistryConfiguration(tmpDir);
+        const registry = new SkillRegistry(config);
+        await registry.initialize();
+
+        // Create a structured skill
+        await registry.createSkill('structured', 'A sufficiently long description for testing', '');
+        await expect(
+            registry.updateSkill('structured', { body: VALID_BODY })
+        ).rejects.toThrow('Cannot directly set body');
+    });
+
+    // ── Structured skill: setResource with Sections ──────────────
+
+    it('setResource with Sections triggers recomposeBody', async () => {
+        createTempDirStructure(tmpDir, {
+            'struct/SKILL.md': makeSkillFile('struct', 'A sufficiently long description for testing', '')
+        });
+
+        const config = new SkillRegistryConfiguration(tmpDir);
+        const registry = new SkillRegistry(config);
+        await registry.initialize();
+
+        const skill = registry.get('struct')!;
+        skill.metadataBodyFormat = BodyFormat.Structured;
+        await skill.setResource('sections', 'purpose.md', '# Purpose text');
+        // Body should now contain recomposed content
+        expect(skill.body).toContain('Purpose');
+        expect(skill.body).toContain('Purpose text');
+    });
+
+    // ── Structured skill: deleteResource with Sections ───────────
+
+    it('deleteResource with Sections triggers recomposeBody', async () => {
+        createTempDirStructure(tmpDir, {
+            'struct/SKILL.md': makeSkillFile('struct', 'A sufficiently long description for testing', '')
+        });
+
+        const config = new SkillRegistryConfiguration(tmpDir);
+        const registry = new SkillRegistry(config);
+        await registry.initialize();
+
+        const skill = registry.get('struct')!;
+        skill.metadataBodyFormat = BodyFormat.Structured;
+        await skill.setResource('sections', 'purpose.md', '# Purpose text');
+        expect(skill.body).toContain('Purpose text');
+
+        await skill.deleteResource('sections', 'purpose.md');
+        // Body should no longer contain the deleted section content
+        expect(skill.body).not.toContain('Purpose text');
+    });
+
+    // ── demoteHeadings tests ─────────────────────────────────────
+
+    it('demoteHeadings shifts ATX headings up one level by default', () => {
+        expect(demoteHeadings('# Title')).toBe('## Title');
+        expect(demoteHeadings('## Sub')).toBe('### Sub');
+        expect(demoteHeadings('### Sub')).toBe('#### Sub');
+        expect(demoteHeadings('#### Sub')).toBe('##### Sub');
+        expect(demoteHeadings('##### Sub')).toBe('###### Sub');
+    });
+
+    it('demoteHeadings shifts ATX headings up multiple levels', () => {
+        expect(demoteHeadings('# Title', 2)).toBe('### Title');
+        expect(demoteHeadings('## Sub', 2)).toBe('#### Sub');
+        expect(demoteHeadings('### Sub', 2)).toBe('##### Sub');
+        expect(demoteHeadings('#### Sub', 2)).toBe('###### Sub');
+    });
+
+    it('demoteHeadings caps at ######', () => {
+        expect(demoteHeadings('###### Deep')).toBe('###### Deep');
+        expect(demoteHeadings('###### Deep', 2)).toBe('###### Deep');
+        expect(demoteHeadings('##### Deep', 2)).toBe('###### Deep');
+        expect(demoteHeadings('#### Deep', 3)).toBe('###### Deep');
+    });
+
+    it('demoteHeadings skips headings inside fenced code blocks', () => {
+        const input = 'text\n```\n# inside code\n```\n# outside code';
+        expect(demoteHeadings(input)).toBe('text\n```\n# inside code\n```\n## outside code');
+        expect(demoteHeadings(input, 2)).toBe('text\n```\n# inside code\n```\n### outside code');
+    });
+
+    it('demoteHeadings handles mixed content and preserves non-heading lines', () => {
+        const input = 'Paragraph text\n\n## Existing Sub\n\n- list item\n\nMore text';
+        const result = demoteHeadings(input);
+        expect(result).toContain('### Existing Sub');
+        expect(result).toContain('Paragraph text');
+        expect(result).toContain('- list item');
+        expect(result).toContain('More text');
+    });
+
+    // ── listResources with sections/ ────────────────────────────
+
+    it('listResources includes sections/ files', async () => {
+        createTempDirStructure(tmpDir, {
+            'struct/SKILL.md': makeSkillFile('struct', 'A sufficiently long description for testing', '')
+        });
+
+        const config = new SkillRegistryConfiguration(tmpDir);
+        const registry = new SkillRegistry(config);
+        await registry.initialize();
+
+        const skill = registry.get('struct')!;
+        skill.metadataBodyFormat = BodyFormat.Structured;
+        await skill.setResource('sections', 'purpose.md', '# Purpose');
+        await skill.setResource('sections', 'workflow.md', '# Workflow');
+
+        const resources = await skill.listResources();
+        const sectionFiles = resources.filter((r) => r.resource === SkillResource.Sections);
+        expect(sectionFiles).toHaveLength(2);
+        expect(sectionFiles.find((r) => r.fileName === 'purpose.md')).toBeDefined();
+        expect(sectionFiles.find((r) => r.fileName === 'workflow.md')).toBeDefined();
+    });
+
+    // ── createSkill with empty body creates structured shell ─────
+
+    it('createSkill with empty body creates structured skill', async () => {
+        const config = new SkillRegistryConfiguration(tmpDir);
+        const registry = new SkillRegistry(config);
+        await registry.initialize();
+
+        const skill = await registry.createSkill('struct_skill', 'A sufficiently long description for testing', '');
+        expect(skill.isStructured).toBe(true);
+        expect(skill.metadataBodyFormat).toBe(BodyFormat.Structured);
+        expect(skill.body).toBe('');
+    });
+
+    // ── Skill.parse direct tests ─────────────────────────────────
+
+    it('parse returns null for content without frontmatter', () => {
+        const result = Skill.parse('no frontmatter here', tmpDir);
+        expect(result).toBeNull();
+    });
+
+    it('parse returns null for invalid YAML in frontmatter', () => {
+        const result = Skill.parse('---\n{invalid: yaml:\n---\nbody', tmpDir);
+        expect(result).toBeNull();
+    });
+
+    it('parse returns null for non-object YAML', () => {
+        const result = Skill.parse('---\n"just a string"\n---\nbody', tmpDir);
+        expect(result).toBeNull();
+    });
+
+    it('parse returns null when name or description is missing', () => {
+        const result = Skill.parse('---\nname: only_name\n---\nbody', tmpDir);
+        expect(result).toBeNull();
+    });
+
+    it('parse returns null when name or description is empty', () => {
+        const result = Skill.parse('---\nname: \ndescription: \n---\nbody', tmpDir);
+        expect(result).toBeNull();
+    });
+
+    it('parse reads body-format: structured from metadata', () => {
+        const content = `---
+name: structured
+description: A structured skill for testing
+metadata:
+  body-format: structured
+---
+`;
+        const skill = Skill.parse(content, tmpDir);
+        expect(skill).not.toBeNull();
+        expect(skill!.isStructured).toBe(true);
+        expect(skill!.metadataBodyFormat).toBe(BodyFormat.Structured);
+    });
+
+    it('parse handles non-array tags gracefully', () => {
+        const content = `---
+name: tagged
+description: A skill with weird tags
+metadata:
+  tags: "not an array"
+---
+body
+`;
+        const skill = Skill.parse(content, tmpDir);
+        expect(skill).not.toBeNull();
+        expect(skill!.tags).toEqual([]);
+    });
+
+    it('parse handles valid tags', () => {
+        const content = `---
+name: tagged
+description: A skill with tags
+metadata:
+  tags:
+    - deploy
+    - ops
+---
+body
+`;
+        const skill = Skill.parse(content, tmpDir);
+        expect(skill).not.toBeNull();
+        expect(skill!.tags).toEqual(['deploy', 'ops']);
+    });
+
+    // ── Skill.nameToDirName ─────────────────────────────────────
+
+    it('nameToDirName normalises names', () => {
+        expect(Skill.nameToDirName('My Cool Skill!')).toBe('my-cool-skill');
+        expect(Skill.nameToDirName('simple')).toBe('simple');
+        expect(Skill.nameToDirName('UPPERCASE')).toBe('uppercase');
+        expect(Skill.nameToDirName('special_chars@#$')).toBe('special_chars');
+    });
+
+    // ── Skill.dirName / skillDir ────────────────────────────────
+
+    it('dirName returns sanitised name', () => {
+        const skill = new Skill('My Skill!', 'A sufficiently long description', 'body', tmpDir);
+        expect(skill.dirName).toBe('my-skill');
+    });
+
+    it('skillDir joins rootDir with dirName', () => {
+        const skill = new Skill('test_skill', 'A sufficiently long description', 'body', tmpDir);
+        expect(skill.skillDir).toBe(path.join(tmpDir, 'test_skill'));
+    });
+
+    // ── Skill.getResource edge cases ────────────────────────────
+
+    it('getResource returns null for invalid resource type', async () => {
+        const skill = new Skill('test', 'A sufficiently long description', 'body', tmpDir);
+        await skill.save();
+        const result = await skill.getResource('bogus', 'file.md');
+        expect(result).toBeNull();
+    });
+
+    it('getResource returns null for empty name', async () => {
+        const skill = new Skill('test', 'A sufficiently long description', 'body', tmpDir);
+        await skill.save();
+        const result = await skill.getResource('references', '');
+        expect(result).toBeNull();
+    });
+
+    // ── Skill.setResource with invalid type ────────────────────
+
+    it('setResource throws for invalid resource type', async () => {
+        const skill = new Skill('test', 'A sufficiently long description', 'body', tmpDir);
+        await skill.save();
+        await expect(
+            skill.setResource('bogus', 'file.md', 'content')
+        ).rejects.toThrow('Only resources of type references, assets, or sections can be written');
+    });
+
+    // ── Skill.deleteResource sections guardrail on plain skill ──
+
+    // ── Skill.setResource with invalid section name ──────────────
+
+    it('setResource with sections and invalid name throws error', async () => {
+        const skill = new Skill('test', 'A sufficiently long description', '', tmpDir);
+        await skill.save();
+        skill.metadataBodyFormat = BodyFormat.Structured;
+        await expect(
+            skill.setResource('sections', 'foo.md', 'content')
+        ).rejects.toThrow('Invalid section name');
+    });
+
+    // ── Skill.deleteResource with invalid section name ───────────
+
+    it('deleteResource with sections and invalid name throws error', async () => {
+        const skill = new Skill('test', 'A sufficiently long description', '', tmpDir);
+        await skill.save();
+        skill.metadataBodyFormat = BodyFormat.Structured;
+        await expect(
+            skill.deleteResource('sections', 'bar.md')
+        ).rejects.toThrow('Invalid section name');
+    });
+
+    // ── Only predefined section names are accepted ───────────────
+
+    it.each([
+        'purpose.md',
+        'inputs-outputs.md',
+        'constraints.md',
+        'workflow.md',
+        'decision-criteria.md',
+        'examples.md',
+        'anti-patterns.md'
+    ])('accepts predefined section name "%s"', async (fileName) => {
+        const skill = new Skill('test', 'A sufficiently long description', '', tmpDir);
+        await skill.save();
+        skill.metadataBodyFormat = BodyFormat.Structured;
+        await expect(
+            skill.setResource('sections', fileName, `# ${fileName} content`)
+        ).resolves.toBeUndefined();
+    });
+
+    it.each([
+        'purpose.md',
+        'inputs-outputs.md',
+        'constraints.md',
+        'workflow.md',
+        'decision-criteria.md',
+        'examples.md',
+        'anti-patterns.md'
+    ])('rejects non-predefined section name "%s"', async (fileName) => {
+        const skill = new Skill('test', 'A sufficiently long description', '', tmpDir);
+        await skill.save();
+        skill.metadataBodyFormat = BodyFormat.Structured;
+        await expect(
+            skill.setResource('sections', `not-${fileName}`, 'content')
+        ).rejects.toThrow('Invalid section name');
+    });
+
+    // ── Skill.deleteResource sections guardrail on plain skill ──
+
+    it('deleteResource on sections throws for plain skill', async () => {
+        const skill = new Skill('test', 'A sufficiently long description', 'body', tmpDir);
+        await skill.save();
+        await expect(
+            skill.deleteResource('sections', 'purpose.md')
+        ).rejects.toThrow('not a structured skill');
+    });
+
+    // ── recomposeBody edge cases ────────────────────────────────
+
+    it('recomposeBody with no section files produces empty body', async () => {
+        const skill = new Skill('test', 'A sufficiently long description', 'body', tmpDir);
+        await skill.save();
+        await skill.recomposeBody();
+        expect(skill.body).toBe('');
+        expect(skill.isStructured).toBe(true);
+    });
+
+    it('recomposeBody with empty section file is skipped', async () => {
+        const skill = new Skill('test', 'A sufficiently long description', 'body', tmpDir);
+        await skill.save();
+        mkdirSync(path.join(skill.skillDir, 'sections'), { recursive: true });
+        writeFileSync(path.join(skill.skillDir, 'sections', 'purpose.md'), '   ', 'utf-8');
+        await skill.recomposeBody();
+        // Empty whitespace-only file should be skipped
+        expect(skill.body).toBe('');
+        expect(skill.isStructured).toBe(true);
+    });
+
+    // ── Skill.remove on non-existent dir ────────────────────────
+
+    it('remove does not error when directory does not exist', async () => {
+        const skill = new Skill('test', 'A sufficiently long description', 'body', '/nonexistent/path');
+        await expect(skill.remove()).resolves.toBeUndefined();
+    });
+
+    // ── Skill.update edge cases ─────────────────────────────────
+
+    it('update with no changes preserves existing values', async () => {
+        const skill = new Skill('test', 'A sufficiently long description', 'body', tmpDir);
+        await skill.save();
+        await skill.update({});
+        expect(skill.description).toBe('A sufficiently long description');
+        expect(skill.body).toBe('body');
+    });
+
+    it('update with partial data only changes provided fields', async () => {
+        const skill = new Skill('test', 'A sufficiently long description', 'body', tmpDir);
+        await skill.save();
+        await skill.update({ description: 'New desc only' });
+        expect(skill.description).toBe('New desc only');
+        expect(skill.body).toBe('body');
+    });
+
+    // ── serialize edge cases ────────────────────────────────────
+
+    it('serialize omits metadata when tags are empty and body-format is plain', () => {
+        const skill = new Skill('test', 'A sufficiently long description for testing', 'body', tmpDir);
+        const output = skill.serialize();
+        expect(output).not.toContain('metadata:');
+    });
+
+    // ── System prompt wiring tests ──────────────────────────
+
+    describe('system prompt wiring', () => {
+        it('initialize with service wires listing into skills prompt', async () => {
+            createTempDirStructure(tmpDir, {
+                'skill_a/SKILL.md': makeSkillFile('skill_a', 'Alpha skill', 'A body'),
+                'skill_b/SKILL.md': makeSkillFile('skill_b', 'Beta skill', 'B body'),
+            });
+
+            const config = new SkillRegistryConfiguration(tmpDir);
+            const registry = new SkillRegistry(config);
+
+            const rootContainer = new PromptContainer('');
+            const mockService = {
+                chat: () => ({ system: () => rootContainer }),
+            } as unknown as ChatService;
+
+            await registry.initialize(mockService);
+
+            const prompt = rootContainer.prompt('skills');
+            expect(prompt.hasContent()).toBe(true);
+            expect(prompt.content()).toContain('skill_a');
+            expect(prompt.content()).toContain('Alpha skill');
+            expect(prompt.content()).toContain('skill_b');
+            expect(prompt.content()).toContain('Beta skill');
+        });
+
+        it('initialize without service does not wire prompt', async () => {
+            const registry = new SkillRegistry();
+            await registry.initialize();
+            expect(registry.list()).toEqual([]);
+        });
+
+        it('createSkill refreshes the skills prompt', async () => {
+            const config = new SkillRegistryConfiguration(tmpDir);
+            const registry = new SkillRegistry(config);
+
+            const rootContainer = new PromptContainer('');
+            const mockService = {
+                chat: () => ({ system: () => rootContainer }),
+            } as unknown as ChatService;
+
+            await registry.initialize(mockService);
+
+            let prompt = rootContainer.prompt('skills');
+            expect(prompt.content()).toBe('Available skills:');
+
+            await registry.createSkill('new_skill', 'A sufficiently long description for testing', 'B'.repeat(300));
+
+            prompt = rootContainer.prompt('skills');
+            expect(prompt.content()).toContain('new_skill');
+        });
+
+        it('deleteSkill refreshes the skills prompt', async () => {
+            createTempDirStructure(tmpDir, {
+                'todelete/SKILL.md': makeSkillFile('todelete', 'A sufficiently long description for testing', 'body'),
+            });
+
+            const config = new SkillRegistryConfiguration(tmpDir);
+            const registry = new SkillRegistry(config);
+
+            const rootContainer = new PromptContainer('');
+            const mockService = {
+                chat: () => ({ system: () => rootContainer }),
+            } as unknown as ChatService;
+
+            await registry.initialize(mockService);
+
+            let prompt = rootContainer.prompt('skills');
+            expect(prompt.content()).toContain('todelete');
+
+            await registry.deleteSkill('todelete');
+
+            prompt = rootContainer.prompt('skills');
+            expect(prompt.content()).not.toContain('todelete');
+        });
+
+        it('updateSkill refreshes the skills prompt on description change', async () => {
+            createTempDirStructure(tmpDir, {
+                'updateme/SKILL.md': makeSkillFile('updateme', 'A sufficiently long description for testing', 'body'),
+            });
+
+            const config = new SkillRegistryConfiguration(tmpDir);
+            const registry = new SkillRegistry(config);
+
+            const rootContainer = new PromptContainer('');
+            const mockService = {
+                chat: () => ({ system: () => rootContainer }),
+            } as unknown as ChatService;
+
+            await registry.initialize(mockService);
+
+            await registry.updateSkill('updateme', {
+                description: 'Updated sufficiently long description for testing',
+            });
+
+            const prompt = rootContainer.prompt('skills');
+            expect(prompt.content()).toContain('Updated sufficiently long description');
+        });
+    });
 });
+
+

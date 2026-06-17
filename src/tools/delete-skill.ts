@@ -6,13 +6,12 @@ import {
     ToolParameters
 } from '@johannes.latzel/llm-chat';
 import { SkillRegistry } from '../lib/registry.js';
-import { normaliseName } from '../lib/helper.js';
 
 /**
- * Deletes a skill from disk and removes it from the registry.
+ * Deletes a skill.
  *
  * Returns descriptive error messages for invalid parameters or
- * filesystem failures.
+ * failures.
  */
 export class DeleteSkillTool extends Tool {
     private readonly registry: SkillRegistry;
@@ -46,7 +45,7 @@ export class DeleteSkillTool extends Tool {
         }
 
         try {
-            await this.registry.deleteSkill(normaliseName(name.trim()));
+            await this.registry.deleteSkill(name);
             return {
                 result: `Skill '${name}' deleted successfully.`,
                 status: ResultStatus.Success

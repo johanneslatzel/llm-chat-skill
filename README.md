@@ -8,6 +8,7 @@
 [![codecov](https://codecov.io/gh/johanneslatzel/llm-chat-skill/graph/badge.svg)](https://codecov.io/gh/johanneslatzel/llm-chat-skill)
 [![CI](https://github.com/johanneslatzel/llm-chat-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/johanneslatzel/llm-chat-skill/actions/workflows/ci.yml)
 [![Socket Badge](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-skill/latest)](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-skill/latest)
+[![AI Assisted Yes](https://img.shields.io/badge/AI%20Assisted-Yes-green)](https://github.com/mefengl/made-by-ai)
 
 Skill loading tools for the [llm-chat](https://github.com/johanneslatzel/llm-chat) package.
 

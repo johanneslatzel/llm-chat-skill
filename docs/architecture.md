@@ -1,45 +1,43 @@
 # Architecture
 
-## Overview
+The library has three layers:
 
-The library is built around three core concepts: **Registry**, **Tools**, and **File Format**.
+## 1. Registry
 
+`SkillRegistry` discovers, loads, and serves skills from a directory on disk. Each skill lives in its own subdirectory (`my-skill/SKILL.md`). `SkillRegistryConfiguration` controls the directory and warning behaviour.
+
+## 2. Tools
+
+Seven `Tool` subclasses that expose registry operations to an LLM:
+
+- **load_skill** — retrieve a skill's full instructions (body auto-composed for structured skills)
+- **get_skill_resource** — read a file from `references/`, `assets/`, or `sections/`
+- **set_skill** — create or update a skill (omit body for a structured shell)
+- **delete_skill** — remove a skill
+- **set_skill_resource** — write a file into `references/`, `assets/`, or `sections/`
+- **delete_skill_resource** — delete a file from `references/`, `assets/`, or `sections/`
+
+## 3. Package
+
+`SkillToolPackage` bundles all six tools into a single `ToolPackage` for `ToolSuite` registration, and provides a `tutorial()` with a skill-system usage guide.
+
+When a `ChatService` is passed to `registry.initialize(service)`, the registry injects a `skills` prompt into the system prompt containing the current skill listing. The prompt automatically refreshes on every create, update, or delete.
+
+## Skill file format
+
+A `SKILL.md` file is Markdown with YAML frontmatter. The frontmatter must include `name` and `description`, and may include a `metadata` block with `tags` and `body-format`:
+
+```markdown
+---
+name: my_skill
+description: What this skill does
+metadata:
+  tags: [coding]
+  body-format: plain
+---
+Full instructions for the LLM go here.
 ```
-SkillRegistry
- ├── SkillRegistryConfiguration — directory path, warning mode
- ├── initialize() — scans directory for SKILL.md files
- ├── list() — returns all loaded Skill instances
- ├── get(name) — retrieve a Skill by name
- └── listing() — formatted string of available skills (for system prompts)
 
-Skill class
- ├── save() / remove() / rename() / update() — lifecycle
- ├── getResource(resource, name) — read a file from references/ or assets/
- ├── setResource(resource, name, content) — write a file
- ├── deleteResource(resource, name) — delete a file
- └── listResources() — enumerate all files in references/ and assets/
+For **structured** skills (`body-format: structured`), the body is auto-composed from files in `sections/` and should not be set directly.
 
-Tools (extend Tool from llm-chat)
- ├── LoadSkillTool — loads skill body by name
- ├── GetSkillResourceTool — reads files from a skill's resource directories
- ├── SetSkillTool — create and update skills
- ├── DeleteSkillTool — delete skills
- ├── SetSkillResourceTool — write resource files
- └── DeleteSkillResourceTool — delete resource files
-
-Skill file (SKILL.md)
- ├── YAML frontmatter (name, description required)
- └── body — full instructions for the LLM
-```
-
-- **SkillRegistry** — the core class that discovers, parses, and stores skills. Skills live in subdirectories (`my-skill/SKILL.md`) within a configured directory.
-- **SkillRegistryConfiguration** — controls the skill directory path and how warnings during loading are handled.
-- **Skill** — represents a single skill and provides methods for filesystem operations (persistence, rename, remove) and resource file management.
-- **SkillResource** — enum (`Assets`, `References`) identifying the two allowed resource subdirectories.
-- **LoadSkillTool** — retrieves the full body of a named skill, together with a listing of its available reference and asset files. Use this when the LLM needs detailed guidance on a specific tool suite.
-- **GetSkillResourceTool** — reads a resource file from a skill's `references/` or `assets/` directory.
-- **SetSkillTool** — creates new skills and updates existing skills (including rename). The skill folder on disk is renamed when `new_name` is provided.
-- **DeleteSkillTool** — deletes a skill from disk and removes it from the registry.
-- **SetSkillResourceTool** — writes a resource file into a skill's `references/` or `assets/` directory.
-- **DeleteSkillResourceTool** — deletes a resource file from a skill's `references/` or `assets/` directory.
-- **Skill file format** — every skill is a Markdown file with YAML frontmatter containing at minimum a `name` and `description`.
+The `Skill` class handles serialisation, persistence, rename, removal, and resource file management (`references/`, `assets/`, `sections/`).

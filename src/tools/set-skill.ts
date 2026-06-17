@@ -6,17 +6,16 @@ import {
     ToolParameters
 } from '@johannes.latzel/llm-chat';
 import { SkillRegistry } from '../lib/registry.js';
-import { normaliseName } from '../lib/helper.js';
 
 /**
- * Creates or updates a skill in the skill directory.
+ * Creates or updates a skill.
  *
  * If the skill does not exist it is created; if it already exists its
- * properties are updated. When renaming (`new_name`), the skill folder
- * on disk is also renamed to match the new name.
+ * properties are updated. When renaming (`new_name`), the skill is
+ * renamed to match.
  *
  * Returns descriptive error messages for invalid parameters or
- * filesystem failures.
+ * failures.
  */
 export class SetSkillTool extends Tool {
     private readonly registry: SkillRegistry;
@@ -28,7 +27,7 @@ export class SetSkillTool extends Tool {
     constructor(registry: SkillRegistry) {
         super(
             'set_skill',
-            'Create a new skill or update an existing one. Provide a name and description to create a new skill, or use the name of an existing skill to update its properties (description, body) or rename it (new_name). The skill folder on disk is renamed when new_name is provided.',
+            'Create a new skill or update an existing one. Provide name + description + body to create a plain skill, or name + description without body to create a structured skill (use set_skill_resource with sections to add content). Use the name of an existing skill to update its properties or rename it (new_name).',
             new ToolParameters(
                 {
                     name: new ToolParameterProperty(
@@ -41,7 +40,7 @@ export class SetSkillTool extends Tool {
                         'Full instruction body (the markdown content after frontmatter). Optional.'
                     ),
                     new_name: new ToolParameterProperty(
-                        'New name for the skill (update only). When provided, the skill folder is renamed to match.'
+                        'New name for the skill (update only). When provided, the skill is renamed to match.'
                     )
                 },
                 ['name']
@@ -60,14 +59,12 @@ export class SetSkillTool extends Tool {
             };
         }
 
-        const sanitizedName = normaliseName(name.trim());
-
         try {
-            const existing = this.registry.get(sanitizedName);
+            const existing = this.registry.get(name);
             if (existing) {
-                return await this.handleUpdate(sanitizedName, args);
+                return await this.handleUpdate(name, args);
             }
-            return await this.handleCreate(sanitizedName, args);
+            return await this.handleCreate(name, args);
         } catch (e) {
             return {
                 result: (e as Error).message,
@@ -87,15 +84,17 @@ export class SetSkillTool extends Tool {
                 status: ResultStatus.Error
             };
         }
-        const body = args.body;
-        if (typeof body !== 'string') {
+        const body = typeof args.body === 'string' ? args.body : undefined;
+
+        const skill = await this.registry.createSkill(name, description.trim(), body ?? '');
+
+        if (skill.isStructured) {
             return {
-                result: "Required parameter 'body' is missing or not a string for creating a new skill",
-                status: ResultStatus.Error
+                result: `Structured skill '${skill.name}' created. Use set_skill_resource with sections to add content.`,
+                status: ResultStatus.Success
             };
         }
 
-        const skill = await this.registry.createSkill(name, description.trim(), body);
         return {
             result: `Skill '${skill.name}' created successfully.`,
             status: ResultStatus.Success
@@ -106,11 +105,18 @@ export class SetSkillTool extends Tool {
         name: string,
         args: Record<string, unknown>
     ): Promise<PartialToolResult> {
-        const new_name =
-            typeof args.new_name === 'string' ? normaliseName(args.new_name.trim()) : undefined;
+        const existing = this.registry.get(name);
+        const new_name = typeof args.new_name === 'string' ? args.new_name : undefined;
         const description =
             typeof args.description === 'string' ? args.description.trim() : undefined;
         const body = typeof args.body === 'string' ? args.body : undefined;
+
+        if (body !== undefined && existing?.isStructured) {
+            return {
+                result: 'Cannot directly set body on a structured skill. Use set_skill_resource with sections to modify individual sections.',
+                status: ResultStatus.Error
+            };
+        }
 
         if (!new_name && !description && body === undefined) {
             return {
