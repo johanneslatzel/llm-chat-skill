@@ -11,7 +11,15 @@
 [![Socket Badge](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-skill/latest)](https://badge.socket.dev/npm/package/@johannes.latzel/llm-chat-skill/latest)
 [![AI Assisted Yes](https://img.shields.io/badge/AI%20Assisted-Yes-green)](https://github.com/mefengl/made-by-ai)
 
-Skill loading tools for the [llm-chat](https://github.com/johanneslatzel/llm-chat) package.
+Adds skill management tools so the LLM can create, load, search, and edit skills at runtime via tool calls. Plugs into the [llm-chat](https://github.com/johanneslatzel/llm-chat) ecosystem.
+
+## Features
+
+- supports unstructured skills with a single body (`SKILL.md`), and structured skills auto-composed from section files (`purpose.md`, `workflow.md`, `constraints.md`, etc.) with heading demotion
+- resources per skill: `references/`, `assets/`, and `sections/` directories
+- full-text regex search across all resources, filtered by skill or resource type
+- wire a live skill listing into the system prompt, refreshed on every mutation
+- configurable via config objects and env vars
 
 ## Prerequisites
 
