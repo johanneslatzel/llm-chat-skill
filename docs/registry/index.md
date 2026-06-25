@@ -34,7 +34,7 @@ service.tools().add(new SkillToolPackage(registry));
 
 The registry adds a `skills` prompt to the root system prompt container, rendered as:
 
-```
+```text
 skills
     Available skills:
         - my_tool:

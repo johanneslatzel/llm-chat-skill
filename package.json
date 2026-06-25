@@ -1,6 +1,6 @@
 {
     "name": "@johannes.latzel/llm-chat-skill",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "description": "Skill loading tools for the llm-chat ecosystem",
     "license": "MIT",
     "files": [

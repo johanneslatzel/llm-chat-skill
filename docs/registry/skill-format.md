@@ -20,7 +20,7 @@ Full instructions and body content here...
 
 Skills live in a named subdirectory within the configured skill directory:
 
-```
+```text
 /path/to/skills/
   my-skill/
     SKILL.md
