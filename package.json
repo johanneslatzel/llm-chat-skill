@@ -63,7 +63,7 @@
     },
     "dependencies": {
         "@johannes.latzel/llm-chat": "^0.7.0",
-        "js-yaml": "^4.2.0"
+        "js-yaml": "^5.2.3"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
