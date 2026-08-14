@@ -27,3 +27,10 @@ const result = await tool.execute({ name: 'my_skill' });
 // result.status === ResultStatus.Success
 // result.result === "Full instructions...\n\n--- Resources ---\n\nreferences/guide.md\nsections/purpose.md"
 ```
+
+
+## See also
+
+- [Tools](index.md): all skill tools
+- [Registry](../registry/index.md): `SkillRegistry` and configuration
+- [Quick start](../examples/quick-start.md): create and load the first skill

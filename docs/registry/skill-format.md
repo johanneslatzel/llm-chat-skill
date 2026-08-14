@@ -44,7 +44,7 @@ Skills live in a named subdirectory within the configured skill directory:
 | `description` | yes | Short description shown in listings |
 | `metadata.tags` | no | Array of tag strings for categorisation |
 | `metadata.body-format` | no | Set to `"structured"` for skills whose body is auto-composed from `sections/` files. Omit or set to `"plain"` for a single body string. |
-| body | — | Full instructions (everything after the frontmatter). For structured skills the body is auto-composed and should not be set directly. |
+| body | (set directly for plain skills) | Full instructions (everything after the frontmatter). For structured skills the body is auto-composed and should not be set directly. |
 
 ## Plain vs structured skills
 
@@ -69,3 +69,10 @@ A skill becomes **structured** when created without a body (`set_skill` with `na
 Body length is enforced on `set_skill` for plain skills. Structured skills bypass the body length check because the body is auto-composed from individual sections (each capped at 10,000 chars via `set_skill_resource`).
 
 Each skill's `rootDir` points to the parent (configured skill directory), and its subdirectory is derived from the sanitised name. The `get_skill_resource`, `set_skill_resource`, and `delete_skill_resource` tools access files inside `references/`, `assets/`, and `sections/`.
+
+
+## See also
+
+- [Registry](index.md): `SkillRegistry` and listing
+- [Configuration](configuration.md): `SkillRegistryConfiguration` reference
+- [set_skill](../tools/set-skill.md): create a plain or structured skill

@@ -8,7 +8,7 @@ optionally filtered by resource type.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `skill_name` | `string` | no | Only list resources for a specific skill |
-| `resource_type` | `string` | no | Only list resources of this type — `references`, `assets`, or `sections` |
+| `resource_type` | `string` | no | Only list resources of this type: `references`, `assets`, or `sections` |
 
 ## Returns
 
@@ -36,3 +36,10 @@ const result = await tool.execute({ skill_name: 'my_skill' });
 //
 // Total: 2 resources."
 ```
+
+
+## See also
+
+- [Tools](index.md): all skill tools
+- [search_resources](search-resources.md): search resource contents
+- [Quick start](../examples/quick-start.md): create and load the first skill

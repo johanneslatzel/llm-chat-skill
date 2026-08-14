@@ -10,7 +10,7 @@ renaming (`new_name`), the skill folder on disk is also renamed.
 |-----------|------|----------|-------------|
 | `name` | `string` | yes | The skill name. If the skill does not exist it is created; if it exists it is updated. |
 | `description` | `string` | no | Short description. Required when creating a new skill, optional when updating. |
-| `body` | `string` | no | Full instruction body (the markdown content after frontmatter). Optional when creating — omit to create a **structured** skill (body auto-composed from `sections/` files). If the skill is already structured, providing `body` returns an error. |
+| `body` | `string` | no | Full instruction body (the markdown content after frontmatter). Optional when creating: omit to create a **structured** skill (body auto-composed from `sections/` files). If the skill is already structured, providing `body` returns an error. |
 | `new_name` | `string` | no | New name for the skill (update only). When provided, the skill folder is renamed to match. |
 
 ## Returns
@@ -41,7 +41,7 @@ const result = await tool.execute({
 // result.result === "Skill 'my_skill' created successfully."
 ```
 
-### Structured skill (no body — sections managed separately)
+### Structured skill (no body, sections managed separately)
 
 ```ts
 const result = await tool.execute({
@@ -49,7 +49,7 @@ const result = await tool.execute({
     description: 'Instructions for performing a specific task'
 });
 // result.status === ResultStatus.Success
-// result.result === "Skill 'my_skill' created as structured shell."
+// result.result === "Structured skill 'my_skill' created. Use set_skill_resource with sections to add content."
 ```
 
 ### Update an existing skill
@@ -63,3 +63,10 @@ const result = await tool.execute({
 // result.status === ResultStatus.Success
 // result.result === "Skill 'my_skill' updated: description → '...', body updated."
 ```
+
+
+## See also
+
+- [Tools](index.md): all skill tools
+- [set_skill_resource](set-skill-resource.md): write sections for a structured skill
+- [Skill file format](../registry/skill-format.md): plain vs structured skills

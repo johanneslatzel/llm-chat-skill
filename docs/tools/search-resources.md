@@ -37,3 +37,10 @@ const result = await tool.execute({ query: 'deploy' });
 //
 // 2 matches across 2 skills."
 ```
+
+
+## See also
+
+- [Tools](index.md): all skill tools
+- [list_resources](list-resources.md): list resource files
+- [Quick start](../examples/quick-start.md): create and load the first skill

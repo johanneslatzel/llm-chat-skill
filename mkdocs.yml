@@ -14,7 +14,26 @@ theme:
         name: Switch to light mode
 plugins:
   - search
-
+nav:
+  - Overview: index.md
+  - Quick start: examples/quick-start.md
+  - Tools:
+      - tools/index.md
+      - load_skill: tools/load-skill.md
+      - set_skill: tools/set-skill.md
+      - delete_skill: tools/delete-skill.md
+      - get_skill_resource: tools/get-skill-resource.md
+      - set_skill_resource: tools/set-skill-resource.md
+      - delete_skill_resource: tools/delete-skill-resource.md
+      - search_resources: tools/search-resources.md
+      - list_resources: tools/list-resources.md
+  - Packages: packages.md
+  - Registry:
+      - registry/index.md
+      - Configuration: registry/configuration.md
+      - Skill file format: registry/skill-format.md
+  - Environment variables: env.md
+  - Architecture: architecture.md
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true

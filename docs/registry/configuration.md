@@ -30,3 +30,10 @@ import { SkillRegistryConfiguration, WarningMode } from '@johannes.latzel/llm-ch
 
 const config = new SkillRegistryConfiguration('/path/to/skills', WarningMode.Error);
 ```
+
+
+## See also
+
+- [Registry](index.md): `SkillRegistry` and listing
+- [Skill file format](skill-format.md): anatomy of a `SKILL.md` file
+- [Environment variables](../env.md): configuration reference

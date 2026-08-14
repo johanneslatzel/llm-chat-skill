@@ -1,13 +1,13 @@
 # delete_skill_resource
 
-Deletes a resource from a skill — references, assets, or sections. Does not error if the resource does not already exist. Deleting a section triggers a body recomposition for structured skills.
+Deletes a resource from a skill: references, assets, or sections. Does not error if the resource does not already exist. Deleting a section triggers a body recomposition for structured skills.
 
 ## Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `skill_name` | `string` | yes | The name of the skill to delete the resource from. |
-| `resourceType` | `string` | yes | Resource type — must be `references`, `assets`, or `sections`. |
+| `resourceType` | `string` | yes | Resource type: must be `references`, `assets`, or `sections`. |
 | `name` | `string` | yes | Resource identifier (e.g. `"guide"` for references/assets). For sections, must be one of: `purpose.md`, `inputs-outputs.md`, `constraints.md`, `workflow.md`, `decision-criteria.md`, `examples.md`, `anti-patterns.md`. |
 
 ## Returns
@@ -33,3 +33,10 @@ const result = await tool.execute({
 // result.status === ResultStatus.Success
 // result.result === "Resource 'guide.md' of type 'references' deleted from skill 'my_skill'."
 ```
+
+
+## See also
+
+- [Tools](index.md): all skill tools
+- [set_skill_resource](set-skill-resource.md): write a resource
+- [Skill file format](../registry/skill-format.md): plain vs structured skills
