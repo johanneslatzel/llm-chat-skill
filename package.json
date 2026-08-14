@@ -1,8 +1,9 @@
 {
     "name": "@johannes.latzel/llm-chat-skill",
-    "version": "0.2.4",
+    "version": "0.2.5",
     "description": "Skill loading tools for the llm-chat ecosystem",
     "license": "MIT",
+    "sideEffects": false,
     "files": [
         "dist/",
         "README.md",
@@ -36,6 +37,8 @@
         }
     },
     "scripts": {
+        "prebuild": "rm -rf dist/",
+        "prepack": "npm run build",
         "build": "tsc -p tsconfig.build.json",
         "verify": "tsc --noEmit && eslint . --max-warnings 0 && vitest run --coverage",
         "lint": "eslint . --max-warnings 0",
@@ -45,7 +48,8 @@
         "clean:pack": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify && npm run build && npm pack",
         "clean:install": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify",
         "docs": "docker run --rm -it -p 8000:8000 -v $PWD:/docs squidfunk/mkdocs-material",
-        "prepare": "husky"
+        "prepare": "husky",
+        "audit": "npm audit --audit-level=high"
     },
     "publishConfig": {
         "access": "public"
@@ -58,20 +62,20 @@
         ]
     },
     "dependencies": {
-        "@johannes.latzel/llm-chat": "^0.6.0",
-        "js-yaml": "^4.2.0"
+        "@johannes.latzel/llm-chat": "^0.7.0",
+        "js-yaml": "^5.2.3"
     },
     "devDependencies": {
-        "@eslint/js": "^9.24.0",
+        "@eslint/js": "^10.0.1",
         "@types/js-yaml": "^4.0.9",
-        "@types/node": "^22.14.1",
+        "@types/node": "^26.2.0",
         "@typescript-eslint/eslint-plugin": "^8.60.0",
         "@typescript-eslint/parser": "^8.60.0",
         "@vitest/coverage-v8": "^4.1.8",
-        "eslint": "^9.24.0",
+        "eslint": "^10.8.1",
         "eslint-config-prettier": "^10.1.2",
         "husky": "^9.1.7",
-        "lint-staged": "^15.5.1",
+        "lint-staged": "^17.3.0",
         "prettier": "^3.5.3",
         "typescript": "^6.0.3",
         "vitest": "^4.1.8"

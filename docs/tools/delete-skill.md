@@ -26,3 +26,9 @@ const result = await tool.execute({ name: 'my_skill' });
 // result.status === ResultStatus.Success
 // result.result === "Skill 'my_skill' deleted successfully."
 ```
+
+
+## See also
+
+- [Tools](index.md): all skill tools
+- [set_skill](set-skill.md): create or update a skill

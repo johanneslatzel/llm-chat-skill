@@ -166,9 +166,7 @@ export class Skill {
             frontmatter.metadata = metadata;
         }
 
-        const cleanYaml = yaml
-            .dump(frontmatter, { lineWidth: -1, noCompatMode: true })
-            .replace(/\n$/, '');
+        const cleanYaml = yaml.dump(frontmatter, { lineWidth: -1 }).replace(/\n$/, '');
 
         let result = `---\n${cleanYaml}\n---`;
         if (this.body) {

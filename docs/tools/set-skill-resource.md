@@ -1,13 +1,13 @@
 # set_skill_resource
 
-Writes a resource into a skill — references, assets, or sections.
+Writes a resource into a skill: references, assets, or sections.
 
 ## Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `skill_name` | `string` | yes | The name of the skill to write the resource to. |
-| `resourceType` | `string` | yes | Resource type — must be `references`, `assets`, or `sections`. |
+| `resourceType` | `string` | yes | Resource type: must be `references`, `assets`, or `sections`. |
 | `name` | `string` | yes | Resource identifier (e.g. `"guide"` for references/assets). For sections, must be one of: `purpose.md`, `inputs-outputs.md`, `constraints.md`, `workflow.md`, `decision-criteria.md`, `examples.md`, `anti-patterns.md`. |
 | `content` | `string` | yes | Content to write. |
 
@@ -51,3 +51,11 @@ const result = await tool.execute({
 // result.status === ResultStatus.Success
 // The skill body is recomposed from all section files.
 ```
+
+
+## See also
+
+- [Tools](index.md): all skill tools
+- [get_skill_resource](get-skill-resource.md): read a resource
+- [delete_skill_resource](delete-skill-resource.md): remove a resource
+- [Skill file format](../registry/skill-format.md): plain vs structured skills

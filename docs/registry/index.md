@@ -2,8 +2,8 @@
 
 The `SkillRegistry` discovers, parses, and serves skills from a configured directory. Skills are stored in `SKILL.md` files with YAML frontmatter.
 
-- **[Configuration](configuration.md)** — `SkillRegistryConfiguration` reference
-- **[Skill file format](skill-format.md)** — anatomy of a `SKILL.md` file
+- [Configuration](configuration.md): `SkillRegistryConfiguration` reference
+- [Skill file format](skill-format.md): anatomy of a `SKILL.md` file
 
 ## Listing skills
 
@@ -21,7 +21,7 @@ const systemMessage = `You have access to the following skills:\n\n${registry.li
 
 ## Auto-wiring into the system prompt
 
-When using `@johannes.latzel/llm-chat`, pass your `ChatService` instance to `initialize()` to automatically inject the listing into the system prompt under a `skills` heading:
+When using `@johannes.latzel/llm-chat`, pass a `ChatService` instance to `initialize()` to automatically inject the listing into the system prompt under a `skills` heading:
 
 ```ts
 import { SkillRegistry, SkillToolPackage } from '@johannes.latzel/llm-chat-skill';
@@ -50,6 +50,12 @@ skills
             - references: 0
 ```
 
-The listing stays in sync automatically — `createSkill`, `updateSkill`, and `deleteSkill` each refresh the prompt via `setContent()`, which invalidates the system prompt cache so the change takes effect on the next `send()`.
+The listing stays in sync automatically: `createSkill`, `updateSkill`, and `deleteSkill` each refresh the prompt via `setContent()`, which invalidates the system prompt cache so the change takes effect on the next `send()`.
 
-If you omit the `service` parameter, `initialize()` works exactly as before with no prompt wiring.
+When the `service` parameter is omitted, `initialize()` works exactly as before with no prompt wiring.
+
+
+## See also
+
+- [Overview](../index.md): package introduction
+- [Environment variables](../env.md): configuration reference
