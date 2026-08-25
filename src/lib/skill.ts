@@ -148,6 +148,28 @@ export class Skill {
         return normaliseName(name);
     }
 
+    /**
+     * Returns only the YAML frontmatter (without `---` delimiters or body).
+     * Suitable for inclusion in multi-document YAML listings.
+     */
+    frontmatter(): string {
+        const fm: Record<string, unknown> = {
+            name: this.name,
+            description: this.description
+        };
+        const metadata: Record<string, unknown> = {};
+        if (this.tags.length > 0) {
+            metadata.tags = this.tags;
+        }
+        if (this.metadataBodyFormat === BodyFormat.Structured) {
+            metadata['body-format'] = 'structured';
+        }
+        if (Object.keys(metadata).length > 0) {
+            fm.metadata = metadata;
+        }
+        return yaml.dump(fm, { lineWidth: -1 }).replace(/\n$/, '');
+    }
+
     /** Serializes the skill to SKILL.md format (YAML frontmatter + body). */
     serialize(): string {
         const frontmatter: Record<string, unknown> = {

@@ -1,6 +1,6 @@
 {
     "name": "@johannes.latzel/llm-chat-skill",
-    "version": "0.2.5",
+    "version": "0.2.6",
     "description": "Skill loading tools for the llm-chat ecosystem",
     "license": "MIT",
     "sideEffects": false,
@@ -40,7 +40,7 @@
         "prebuild": "rm -rf dist/",
         "prepack": "npm run build",
         "build": "tsc -p tsconfig.build.json",
-        "verify": "tsc --noEmit && eslint . --max-warnings 0 && vitest run --coverage",
+        "verify": "tsc --noEmit && eslint . --max-warnings 0 && npm run check:lines && vitest run --coverage",
         "lint": "eslint . --max-warnings 0",
         "format": "prettier --write src",
         "test": "vitest",
@@ -49,7 +49,8 @@
         "clean:install": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify",
         "docs": "docker run --rm -it -p 8000:8000 -v $PWD:/docs squidfunk/mkdocs-material",
         "prepare": "husky",
-        "audit": "npm audit --audit-level=high"
+        "audit": "npm audit --audit-level=high",
+        "check:lines": "check-line-limits"
     },
     "publishConfig": {
         "access": "public"
@@ -78,6 +79,7 @@
         "lint-staged": "^17.3.0",
         "prettier": "^3.5.3",
         "typescript": "^6.0.3",
-        "vitest": "^4.1.8"
+        "vitest": "^4.1.8",
+        "@johannes.latzel/check-line-limits": "^1.0.1"
     }
 }

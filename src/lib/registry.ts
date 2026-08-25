@@ -312,4 +312,15 @@ export class SkillRegistry {
         }
         return lines.join('\n');
     }
+
+    /**
+     * Returns a multi-document YAML string where each loaded skill is
+     * represented by its frontmatter block (name, description, metadata).
+     * Skills are sorted alphabetically. Empty string when no skills exist.
+     */
+    frontmatterListing(): string {
+        const sorted = this.list().sort((a, b) => a.name.localeCompare(b.name));
+        if (sorted.length === 0) return '';
+        return sorted.map((s) => `---\n${s.frontmatter()}\n---`).join('\n');
+    }
 }
