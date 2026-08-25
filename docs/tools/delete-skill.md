@@ -22,7 +22,7 @@ Returns an error message if:
 ```ts
 import { DeleteSkillTool } from '@johannes.latzel/llm-chat-skill';
 
-const result = await tool.execute({ name: 'my_skill' });
+const [result] = await tool.execute({ name: 'my_skill' });
 // result.status === ResultStatus.Success
 // result.result === "Skill 'my_skill' deleted successfully."
 ```

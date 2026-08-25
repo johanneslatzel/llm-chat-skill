@@ -8,7 +8,7 @@ Deletes a resource from a skill: references, assets, or sections. Does not error
 |-----------|------|----------|-------------|
 | `skill_name` | `string` | yes | The name of the skill to delete the resource from. |
 | `resourceType` | `string` | yes | Resource type: must be `references`, `assets`, or `sections`. |
-| `name` | `string` | yes | Resource identifier (e.g. `"guide"` for references/assets). For sections, must be one of: `purpose.md`, `inputs-outputs.md`, `constraints.md`, `workflow.md`, `decision-criteria.md`, `examples.md`, `anti-patterns.md`. |
+| `name` | `string` | yes | Resource identifier. For references/assets use the exact file name including extension (e.g. `"guide.md"`). For sections, must be one of: `purpose.md`, `inputs-outputs.md`, `constraints.md`, `workflow.md`, `decision-criteria.md`, `examples.md`, `anti-patterns.md`. |
 
 ## Returns
 
@@ -25,7 +25,7 @@ Returns an error message if:
 ```ts
 import { DeleteSkillResourceTool } from '@johannes.latzel/llm-chat-skill';
 
-const result = await tool.execute({
+const [result] = await tool.execute({
     skill_name: 'my_skill',
     resourceType: 'references',
     name: 'guide.md'

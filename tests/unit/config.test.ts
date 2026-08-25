@@ -117,4 +117,23 @@ describe('SkillRegistryConfiguration', () => {
         expect(config.resourceContentMinLength).toBe(1);
         expect(config.resourceContentMaxLength).toBe(5000);
     });
+
+    // ── Not-found hint bounds ───────────────────────────────────
+
+    it('defaults max hint resource names to 8', () => {
+        const config = new SkillRegistryConfiguration();
+        expect(config.maxHintResourceNames).toBe(8);
+    });
+
+    it('reads max hint resource names from env', () => {
+        vi.stubEnv('LLM_CHAT_SKILL_MAX_HINT_RESOURCE_NAMES', '4');
+        const config = new SkillRegistryConfiguration();
+        expect(config.maxHintResourceNames).toBe(4);
+    });
+
+    it('constructor override takes precedence over env for max hint resource names', () => {
+        vi.stubEnv('LLM_CHAT_SKILL_MAX_HINT_RESOURCE_NAMES', '4');
+        const config = new SkillRegistryConfiguration(undefined, undefined, 6);
+        expect(config.maxHintResourceNames).toBe(6);
+    });
 });

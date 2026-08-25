@@ -29,6 +29,12 @@ All variables can be set in the shell, in a `.env` file, or via the `SkillRegist
 | `LLM_CHAT_RESOURCE_CONTENT_MIN_LENGTH` | no | `1` | Minimum resource content length |
 | `LLM_CHAT_RESOURCE_CONTENT_MAX_LENGTH` | no | `10_000` | Maximum resource content length |
 
+## Resource not-found hint
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `LLM_CHAT_SKILL_MAX_HINT_RESOURCE_NAMES` | no | `8` | Maximum number of resource identifiers listed in the `get_skill_resource` not-found hint |
+
 
 ## See also
 

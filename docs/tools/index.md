@@ -15,5 +15,5 @@ Tools let the LLM load, inspect, and manage skills. Each tool extends `Tool` fro
 ## See also
 
 - [Overview](../index.md): package introduction
-- [Packages](../packages.md): `SkillToolPackage` for `ToolSuite` integration
+- [Packages](../packages.md): `SkillToolPackage` for `ChatService` integration
 - [Quick start](../examples/quick-start.md): create and load the first skill

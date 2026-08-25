@@ -16,7 +16,7 @@ const config = new SkillRegistryConfiguration('./skills');
 const registry = new SkillRegistry(config);
 await registry.initialize();
 
-const systemMessage = `You have access to the following skills:\n\n${registry.listing()}`;
+const systemMessage = `You have access to the following skills:\n\n${await registry.listing()}`;
 ```
 
 ## Auto-wiring into the system prompt

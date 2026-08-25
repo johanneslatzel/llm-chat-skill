@@ -8,6 +8,19 @@ import {
 import { SkillRegistry } from '../lib/registry.js';
 
 /**
+ * Formats the available resource identifiers for a not-found hint.
+ *
+ * Shows at most `maxNames` identifiers and appends "(truncated)" when
+ * the list is longer.
+ */
+function formatAvailableNames(names: string[], maxNames: number): string {
+    if (names.length <= maxNames) {
+        return names.join(', ');
+    }
+    return `${names.slice(0, maxNames).join(', ')} (truncated)`;
+}
+
+/**
  * Reads a resource from a skill.
  *
  * Returns descriptive error messages for unknown skills or invalid
@@ -33,7 +46,7 @@ export class GetSkillResourceTool extends Tool {
                         'Resource type — must be references, assets, or sections.'
                     ),
                     name: new ToolParameterProperty(
-                        'Resource identifier, e.g. "guide" or "purpose".'
+                        'Resource identifier. Use the exact file name including extension (e.g. "guide.md", "purpose.md") as shown in the load_skill resource listing or list_resources.'
                     )
                 },
                 ['skill_name', 'resourceType', 'name']
@@ -75,8 +88,16 @@ export class GetSkillResourceTool extends Tool {
             return { result: content, status: ResultStatus.Success };
         }
 
+        const available = (await skill.listResources())
+            .filter((r) => r.resource === resourceType.trim())
+            .map((r) => r.fileName);
+        const hint =
+            available.length > 0
+                ? `\nAvailable ${resourceType.trim()} in '${skillName}': ${formatAvailableNames(available, this.registry.maxHintResourceNames)}`
+                : '';
+
         return {
-            result: `Resource '${name}' of type '${resourceType}' not found in skill '${skillName}'.`,
+            result: `Resource '${name}' of type '${resourceType}' not found in skill '${skillName}'.${hint}`,
             status: ResultStatus.Error
         };
     }

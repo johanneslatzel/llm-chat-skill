@@ -33,6 +33,9 @@ export const DEFAULT_RESOURCE_CONTENT_MIN_LENGTH = 1;
 /** Default maximum length for resource file content. */
 export const DEFAULT_RESOURCE_CONTENT_MAX_LENGTH = 10_000;
 
+/** Default maximum number of resource identifiers shown in a not-found hint. */
+export const DEFAULT_MAX_HINT_RESOURCE_NAMES = 8;
+
 /**
  * Configuration for {@link SkillRegistry}.
  *
@@ -111,10 +114,18 @@ export class SkillRegistryConfiguration {
     resourceContentMaxLength: number;
 
     /**
+     * Maximum number of resource identifiers shown in the
+     * `get_skill_resource` not-found hint.
+     * Env: `LLM_CHAT_SKILL_MAX_HINT_RESOURCE_NAMES` (default: {@link DEFAULT_MAX_HINT_RESOURCE_NAMES}).
+     */
+    maxHintResourceNames: number;
+
+    /**
      * @param skillDir - Override for the skill directory path.
      * @param warnings - Override for the warning mode.
+     * @param maxHintResourceNames - Override for the not-found hint size.
      */
-    constructor(skillDir?: string, warnings?: WarningMode) {
+    constructor(skillDir?: string, warnings?: WarningMode, maxHintResourceNames?: number) {
         if (skillDir !== undefined) this.skillDir = skillDir;
 
         const envWarnings = process.env.LLM_CHAT_SKILL_WARNINGS;
@@ -189,6 +200,10 @@ export class SkillRegistryConfiguration {
             DEFAULT_RESOURCE_CONTENT_MAX_LENGTH,
             resourceContentMin
         );
+
+        this.maxHintResourceNames =
+            maxHintResourceNames ??
+            envInt('LLM_CHAT_SKILL_MAX_HINT_RESOURCE_NAMES', DEFAULT_MAX_HINT_RESOURCE_NAMES, 1);
     }
 
     /**

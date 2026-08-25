@@ -79,6 +79,80 @@ describe('GetSkillResourceTool', () => {
         expect(result[0]!.result).toContain('not found');
     });
 
+    it('lists available identifiers when a reference is not found', async () => {
+        const tool = new GetSkillResourceTool(registry);
+        const result = await tool.execute({ skill_name: 'my_skill', resourceType: 'references', name: 'missing.md' });
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('not found');
+        expect(result[0]!.result).toContain("Available references in 'my_skill': guide.md");
+    });
+
+    it('truncates the available-identifiers hint when many resources exist', async () => {
+        const s = registry.get('my_skill')!;
+        for (let i = 0; i < 10; i++) {
+            await s.setResource('references', `ref-${i}.md`, `content ${i}`);
+        }
+
+        const tool = new GetSkillResourceTool(registry);
+        const result = await tool.execute({ skill_name: 'my_skill', resourceType: 'references', name: 'missing.md' });
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('(truncated)');
+        const line = result[0]!.result
+            .split('\n')
+            .find((l) => l.startsWith('Available references'));
+        expect(line).toContain('ref-0.md');
+        expect(line).toContain('ref-6.md');
+        expect(line).not.toContain('ref-7.md');
+        expect(line).not.toContain('ref-9.md');
+    });
+
+    it('uses the configured max hint resource names', async () => {
+        const config = new SkillRegistryConfiguration(tmpDir, undefined, 3);
+        const reg = new SkillRegistry(config);
+        await reg.initialize();
+        await reg.createSkill(
+            'small_skill',
+            'A sufficiently long description for testing',
+            'B'.repeat(300)
+        );
+        const s = reg.get('small_skill')!;
+        for (let i = 0; i < 5; i++) {
+            await s.setResource('references', `ref-${i}.md`, `content ${i}`);
+        }
+
+        const tool = new GetSkillResourceTool(reg);
+        const result = await tool.execute({ skill_name: 'small_skill', resourceType: 'references', name: 'missing.md' });
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain('(truncated)');
+        const line = result[0]!.result
+            .split('\n')
+            .find((l) => l.startsWith('Available references'));
+        expect(line).toContain('ref-0.md');
+        expect(line).toContain('ref-2.md');
+        expect(line).not.toContain('ref-3.md');
+    });
+
+    it('omits the available-identifiers hint when the skill has none of that type', async () => {
+        const tool = new GetSkillResourceTool(registry);
+        const result = await tool.execute({ skill_name: 'my_skill', resourceType: 'assets', name: 'missing.json' });
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toBe(
+            "Resource 'missing.json' of type 'assets' not found in skill 'my_skill'."
+        );
+    });
+
+    it('lists section identifiers when a section is not found', async () => {
+        await registry.createSkill('struct_skill', 'A sufficiently long description for testing', '');
+        const s = registry.get('struct_skill')!;
+        await s.setResource('sections', 'purpose.md', '# Purpose');
+        await s.setResource('sections', 'workflow.md', '# Workflow');
+
+        const tool = new GetSkillResourceTool(registry);
+        const result = await tool.execute({ skill_name: 'struct_skill', resourceType: 'sections', name: 'missing.md' });
+        expect(result[0]!.status).toBe(ResultStatus.Error);
+        expect(result[0]!.result).toContain("Available sections in 'struct_skill': purpose.md, workflow.md");
+    });
+
     it('reads a section file from a structured skill', async () => {
         await registry.createSkill('struct_skill', 'A sufficiently long description for testing', '');
         const s = registry.get('struct_skill')!;

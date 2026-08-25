@@ -33,7 +33,7 @@ const registry = new SkillRegistry(config);
 await registry.initialize();
 
 const tool = new LoadSkillTool(registry);
-const result = await tool.execute({ name: 'my_tool' });
+const [result] = await tool.execute({ name: 'my_tool' });
 console.log(result.result);
 // "This skill provides guidance on using the my_tool tool suite."
 ```
@@ -61,20 +61,20 @@ await resourceTool.execute({
     skill_name: 'code_review',
     resourceType: 'sections',
     name: 'purpose.md',
-    content: '# Purpose\n\nEnsure code quality.'
+    content: 'Ensure code quality.'
 });
 await resourceTool.execute({
     skill_name: 'code_review',
     resourceType: 'sections',
     name: 'workflow.md',
-    content: '# Workflow\n\n1. No debug logs\n2. Handle errors'
+    content: '1. No debug logs\n2. Handle errors'
 });
 
 // Load it: body is auto-composed from sections
 const loadTool = new LoadSkillTool(registry);
-const result = await loadTool.execute({ name: 'code_review' });
+const [result] = await loadTool.execute({ name: 'code_review' });
 console.log(result.result);
-// "## Purpose\n\nEnsure code quality.\n\n## Workflow\n\n1. No debug logs\n2. Handle errors\n\n--- Resources ---\n\nsections/purpose.md\nsections/workflow.md"
+// "# Purpose\nEnsure code quality.\n\n# Workflow\n1. No debug logs\n2. Handle errors\n\n--- Resources ---\n\nsections/purpose.md\nsections/workflow.md"
 ```
 
 ## Tutorial
@@ -102,23 +102,7 @@ await registry.initialize(service);       // loads skills + wires "skills" promp
 service.tools().add(new SkillToolPackage(registry));  // registers all 8 tools
 ```
 
-Passing a `ChatService` to `initialize()` adds a `skills` prompt to the system prompt with the current skill listing, and automatically refreshes it when skills are created, updated, or deleted via tool calls.
-
-When using `ToolSuite` directly (without a `ChatService`):
-
-```ts
-import { ToolSuite } from '@johannes.latzel/llm-chat';
-import { SkillRegistry, SkillToolPackage } from '@johannes.latzel/llm-chat-skill';
-
-const registry = new SkillRegistry();
-await registry.initialize();
-
-const suite = new ToolSuite();
-suite.add(new SkillToolPackage(registry));
-
-// suite now has all 8 skill tools registered
-const tools = suite.getTools(); // OpenAI-compatible tool definitions
-```
+Passing a `ChatService` to `initialize()` wires the skill listing into the system prompt. See [Auto-wiring into the system prompt](../registry/index.md) for details.
 
 ## Reading reference files
 

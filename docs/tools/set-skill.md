@@ -32,7 +32,7 @@ Returns an error message if:
 ```ts
 import { SetSkillTool } from '@johannes.latzel/llm-chat-skill';
 
-const result = await tool.execute({
+const [result] = await tool.execute({
     name: 'my_skill',
     description: 'Instructions for performing a specific task',
     body: 'Step-by-step instructions for the LLM...'
@@ -44,7 +44,7 @@ const result = await tool.execute({
 ### Structured skill (no body, sections managed separately)
 
 ```ts
-const result = await tool.execute({
+const [result] = await tool.execute({
     name: 'my_skill',
     description: 'Instructions for performing a specific task'
 });
@@ -55,7 +55,7 @@ const result = await tool.execute({
 ### Update an existing skill
 
 ```ts
-const result = await tool.execute({
+const [result] = await tool.execute({
     name: 'my_skill',
     description: 'Updated description',
     body: 'Updated instructions...'

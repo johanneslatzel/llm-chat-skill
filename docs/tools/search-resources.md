@@ -27,15 +27,13 @@ Returns an error message if:
 ```ts
 import { SearchResourcesTool } from '@johannes.latzel/llm-chat-skill';
 
-const result = await tool.execute({ query: 'deploy' });
+const [result] = await tool.execute({ query: 'deploy', skill_name: 'my_skill' });
 // result.status === ResultStatus.Success
-// result.result === "Search results for \"deploy\" in 2 skills:
-//
-// my_skill (references/guide.md):
+// result.result === "my_skill (references/guide.md):
 //   line 1: This is the deploy guide.
 //   line 2: Follow the deployment steps.
 //
-// 2 matches across 2 skills."
+// 2 matches across 1 skill."
 ```
 
 

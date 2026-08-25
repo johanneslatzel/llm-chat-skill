@@ -128,6 +128,14 @@ export class SkillRegistry {
         return this.skills.get(key);
     }
 
+    /**
+     * Maximum number of resource identifiers shown in the
+     * `get_skill_resource` not-found hint.
+     */
+    get maxHintResourceNames(): number {
+        return this.config.maxHintResourceNames;
+    }
+
     // ── Mutation helpers ────────────────────────────────────────────
 
     /**

@@ -2,18 +2,21 @@
 
 ## SkillRegistryConfiguration
 
-Controls the skill directory path and warning behavior.
+Controls the skill directory path, warning behavior, and the size of the `get_skill_resource` not-found hint.
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `skillDir` | `string` | `LLM_CHAT_SKILL_DIR` or `""` | Path to the directory containing skill files |
 | `warnings` | `WarningMode` | `LLM_CHAT_SKILL_WARNINGS` or `WarningMode.Silent` | How warnings during loading are handled |
+| `maxHintResourceNames` | `number` | `LLM_CHAT_SKILL_MAX_HINT_RESOURCE_NAMES` or `8` | Maximum number of resource identifiers listed in the `get_skill_resource` not-found hint |
 
 ### Constructor
 
 ```ts
-new SkillRegistryConfiguration(skillDir?: string, warnings?: WarningMode)
+new SkillRegistryConfiguration(skillDir?: string, warnings?: WarningMode, maxHintResourceNames?: number)
 ```
+
+The constructor arguments override the environment variables, which in turn override the default constants.
 
 ### WarningMode enum
 

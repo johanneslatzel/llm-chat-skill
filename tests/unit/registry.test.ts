@@ -48,6 +48,12 @@ describe('SkillRegistry', () => {
         expect(skill!.skillDir).toBe(path.join(tmpDir, 'sub_skill'));
     });
 
+    it('exposes maxHintResourceNames from the configuration', () => {
+        const config = new SkillRegistryConfiguration(tmpDir, undefined, 3);
+        const registry = new SkillRegistry(config);
+        expect(registry.maxHintResourceNames).toBe(3);
+    });
+
     it('load returns the same skill instance', async () => {
         createTempDirStructure(tmpDir, {
             'cpy/SKILL.md': makeSkillFile('cpy', 'Copy test', 'Original body')

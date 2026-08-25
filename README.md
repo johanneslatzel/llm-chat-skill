@@ -37,7 +37,7 @@ Full documentation at **[johanneslatzel.github.io/llm-chat-skill/](https://johan
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT. See [`LICENSE`](LICENSE).
 
 ## Contributing
 

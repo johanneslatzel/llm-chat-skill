@@ -23,7 +23,7 @@ skill is not found.
 ```ts
 import { LoadSkillTool } from '@johannes.latzel/llm-chat-skill';
 
-const result = await tool.execute({ name: 'my_skill' });
+const [result] = await tool.execute({ name: 'my_skill' });
 // result.status === ResultStatus.Success
 // result.result === "Full instructions...\n\n--- Resources ---\n\nreferences/guide.md\nsections/purpose.md"
 ```

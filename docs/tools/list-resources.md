@@ -24,15 +24,15 @@ Returns an error message if:
 ```ts
 import { ListResourcesTool } from '@johannes.latzel/llm-chat-skill';
 
-const result = await tool.execute({ skill_name: 'my_skill' });
+const [result] = await tool.execute({ skill_name: 'my_skill' });
 // result.status === ResultStatus.Success
 // result.result === "Resources for my_skill:
 //
 // my_skill:
-//     - references:
-//         - guide.md
 //     - assets:
 //         - config.json
+//     - references:
+//         - guide.md
 //
 // Total: 2 resources."
 ```

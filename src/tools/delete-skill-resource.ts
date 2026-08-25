@@ -33,7 +33,7 @@ export class DeleteSkillResourceTool extends Tool {
                         'Resource type — must be references, assets, or sections.'
                     ),
                     name: new ToolParameterProperty(
-                        'Resource identifier (e.g. "guide" for references/assets). For sections, must be one of: purpose.md, inputs-outputs.md, constraints.md, workflow.md, decision-criteria.md, examples.md, anti-patterns.md.'
+                        'Resource identifier. For references/assets use the exact file name including extension (e.g. "guide.md"). For sections, must be one of: purpose.md, inputs-outputs.md, constraints.md, workflow.md, decision-criteria.md, examples.md, anti-patterns.md.'
                     )
                 },
                 ['skill_name', 'resourceType', 'name']

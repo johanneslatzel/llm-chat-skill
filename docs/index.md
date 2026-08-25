@@ -6,7 +6,7 @@ Skill loading tools for the [llm-chat](https://github.com/johanneslatzel/llm-cha
 
 - [Quick start](examples/quick-start.md): install and load the first skill
 - [Tools](tools/index.md): all eight skill tools
-- [Packages](packages.md): `SkillToolPackage` for `ToolSuite` integration
+- [Packages](packages.md): `SkillToolPackage` for `ChatService` integration
 - [Registry](registry/index.md): `SkillRegistry`, configuration, skill file format, `listing()`
 - [Environment variables](env.md): configuration reference
 - [Architecture](architecture.md): high-level design
