@@ -1,6 +1,6 @@
 # Environment Variables
 
-All variables can be set in the shell, in a `.env` file, or via the `SkillRegistryConfiguration` constructor and properties. A `.env.example` is included.
+All variables can be set in the shell, in a host-loaded `.env` file, or on the `SkillRegistryConfiguration` instance after construction. The constructor takes only `skillDir`, `warnings` and `maxHintResourceNames`; the length bounds are read from the environment or set as properties. The package does not load a `.env` file itself.
 
 ## Skill directory and warnings
 

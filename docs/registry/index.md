@@ -21,7 +21,7 @@ const systemMessage = `You have access to the following skills:\n\n${await regis
 
 ## Auto-wiring into the system prompt
 
-When using `@johannes.latzel/llm-chat`, pass a `ChatService` instance to `initialize()` to automatically inject the listing into the system prompt under a `skills` heading:
+When using `@johannes.latzel/llm-chat`, pass a `ChatService` instance to `initialize()` to automatically inject the listing into the system prompt under a `skills` heading. The parameter is typed as `PromptTarget`, so any object with `chat().system().prompt(...)` works:
 
 ```ts
 import { SkillRegistry, SkillToolPackage } from '@johannes.latzel/llm-chat-skill';

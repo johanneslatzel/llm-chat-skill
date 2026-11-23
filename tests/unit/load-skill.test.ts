@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SkillRegistry, SkillRegistryConfiguration, LoadSkillTool } from '../../src/index.js';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus } from '@johannes.latzel/llm-chat-tool';
 import { createTempDir, removeTempDir, createTempDirStructure } from '../index.js';
 
 function makeSkillFile(name: string, description: string, body: string): string {

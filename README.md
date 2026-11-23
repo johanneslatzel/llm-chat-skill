@@ -23,7 +23,7 @@ Adds skill management tools so the LLM can create, load, search, and edit skills
 
 ## Prerequisites
 
-- Node.js >= 18
+- Node.js >= 22
 
 ## Installation
 

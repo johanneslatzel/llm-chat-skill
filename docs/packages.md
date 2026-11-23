@@ -19,6 +19,6 @@ When used with a `ChatService`, pass the service to `registry.initialize(service
 
 ## See also
 
-- [Tools](../tools/index.md): the eight skill tools
-- [Registry](../registry/index.md): `SkillRegistry` and configuration
-- [Quick start](../examples/quick-start.md): create and load the first skill
+- [Tools](tools/index.md): the eight skill tools
+- [Registry](registry/index.md): `SkillRegistry` and configuration
+- [Quick start](examples/quick-start.md): create and load the first skill

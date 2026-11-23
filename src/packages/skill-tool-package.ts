@@ -1,4 +1,4 @@
-import { ToolPackage } from '@johannes.latzel/llm-chat';
+import { ToolPackage } from '@johannes.latzel/llm-chat-tool';
 import { SkillRegistry } from '../lib/registry.js';
 import { LoadSkillTool } from '../tools/load-skill.js';
 import { SetSkillTool } from '../tools/set-skill.js';

@@ -1,5 +1,6 @@
 export { SkillRegistryConfiguration, WarningMode } from './lib/config.js';
 export { SkillRegistry } from './lib/registry.js';
+export type { PromptTarget } from './lib/registry.js';
 export { SkillToolPackage } from './packages/skill-tool-package.js';
 export { LoadSkillTool } from './tools/load-skill.js';
 export { GetSkillResourceTool } from './tools/get-skill-resource.js';

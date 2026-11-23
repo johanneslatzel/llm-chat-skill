@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js >= 18
+- Node.js >= 22
 
 ## Installation
 
@@ -12,7 +12,7 @@ npm install @johannes.latzel/llm-chat-skill
 
 ## Basic usage: plain skill
 
-Create a skill file at `./skills/my-tool/SKILL.md`:
+Create a skill file at `./skills/my_tool/SKILL.md`:
 
 ```markdown
 ---

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SkillRegistry, SkillRegistryConfiguration, SetSkillTool } from '../../src/index.js';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus } from '@johannes.latzel/llm-chat-tool';
 import { createTempDir, removeTempDir, createTempDirStructure } from '../index.js';
 
 const VALID_DESC = 'A sufficiently long description for testing';

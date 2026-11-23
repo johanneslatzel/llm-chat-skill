@@ -2,10 +2,21 @@ import { Dirent } from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 
-import type { ChatService } from '@johannes.latzel/llm-chat';
 import { SkillRegistryConfiguration } from './config.js';
 import { BodyFormat, Skill, SkillResource } from './skill.js';
 import { normaliseName } from './helper.js';
+
+/**
+ * The slice of a chat service that skill prompt refresh uses.
+ *
+ * Typed structurally so the package does not depend on the chat engine; a
+ * `ChatService` from `@johannes.latzel/llm-chat` satisfies it as is.
+ */
+export interface PromptTarget {
+    /** Access the conversation. */
+    chat(): { system(): { prompt(name: string): { setContent(content: string): void } } };
+}
+
 /**
  * Manages loading, listing, and retrieving skills from a configured directory.
  *
@@ -17,7 +28,7 @@ import { normaliseName } from './helper.js';
 export class SkillRegistry {
     private readonly config: SkillRegistryConfiguration;
     private readonly skills: Map<string, Skill> = new Map();
-    private service: ChatService | null = null;
+    private service: PromptTarget | null = null;
 
     /**
      * @param config - Optional configuration. Falls back to
@@ -32,7 +43,7 @@ export class SkillRegistry {
      *
      * Safe to call multiple times — subsequent calls re-load from disk.
      */
-    async initialize(service?: ChatService | null): Promise<void> {
+    async initialize(service?: PromptTarget | null): Promise<void> {
         this.service = service ?? null;
         if (!this.config.skillDir) return;
         const rootDir = this.config.skillDir;
